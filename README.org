@@ -9,18 +9,60 @@
 - ~new~:
   The main thing it makes easier is creating pointers to non-composite types.
   The two functions below are equivalent.
-#+BEGIN_SRC go
+#+BEGIN_SRC go :export both
+import "fmt"
+
 func newInt1() *int { return new(int) }
 
 func newInt2() *int {
     var i int
     return &i
 }
+
+func main() {
+    fmt.Println("-- MAKE --")
+    a := make([]int, 0)
+    aPtr := &a
+    fmt.Println("pointer == nil :", *aPtr == nil)
+    fmt.Printf("pointer value: %p\n\n", *aPtr)
+
+    fmt.Println("-- COMPOSITE LITERAL --")
+    b := []int{}
+    bPtr := &b
+    fmt.Println("pointer == nil :", *bPtr == nil)
+    fmt.Printf("pointer value: %p\n\n", *bPtr)
+
+    fmt.Println("-- NEW --")
+    cPtr := new([]int)
+    fmt.Println("pointer == nil :", *cPtr == nil)
+    fmt.Printf("pointer value: %p\n\n", *cPtr)
+
+    fmt.Println("-- VAR (not initialized) --")
+    var d []int
+    dPtr := &d
+    fmt.Println("pointer == nil :", *dPtr == nil)
+    fmt.Printf("pointer value: %p\n", *dPtr)
+}
 #+END_SRC
 
 #+RESULTS:
-: 0xc0000aa008
-: 0xc0000aa020
+#+begin_example
+-- MAKE --
+pointer == nil : false
+pointer value: 0x11a8c50
+
+-- COMPOSITE LITERAL --
+pointer == nil : false
+pointer value: 0x11a8c50
+
+-- NEW --
+pointer == nil : true
+pointer value: 0x0
+
+-- VAR (not initialized) --
+pointer == nil : true
+pointer value: 0x0
+#+end_example
 
 * Arrays & Slice
 
@@ -28,7 +70,7 @@ func newInt2() *int {
 
 ** Slices
 
-#+BEGIN_SRC go
+#+BEGIN_SRC go :export both
 import "fmt"
 
 func main() {
