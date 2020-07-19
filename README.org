@@ -1,12 +1,154 @@
 #+TITLE: Readme
 
-* ~make~ & ~new~
 
+* Keywords
+
+#+BEGIN_SRC go
+break        default      func         interface    select
+case         defer        go           map          struct
+chan         else         goto         package      switch
+const        fallthrough  if           range        type
+continue     for          import       return       var
+#+END_SRC
+
+
+* Types
+** Boolean
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	var ToBe bool
+	fmt.Printf("Type: %T, Value zeroed is: %v\n", ToBe, ToBe)}
+#+END_SRC
+
+#+RESULTS:
+: Type: bool, Value default is: false
+
+** String
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	var zero string
+	var hi = "Fucker"
+	var fucker = `Steve Jobs was an American entrepreneur and inventor.
+He was the CEO and co-founder of Apple Inc.`
+	fmt.Printf("hi: %q, zeroed: %q, fucker: %q", hi, zero, fucker)
+}
+#+END_SRC
+
+#+RESULTS:
+: hi: "Fucker", zeroed: "", fucker: "Steve Jobs was an American entrepreneur and inventor.\nHe was the CEO and co-founder of Apple Inc."
+
+** Numeric
+*** Integers
+**** Signed
+~int8~ ~int16~ ~int32~ ~int64~
+
+- ~int~
+  platform dependent. It is 32 bits wide on a 32-bit system and 64-bits wide on a 64-bit system.
+
+- ~rune~
+  alias for ~int32~, represents a Unicode code point
+
+**** Unsigned
+~uint~ ~uint8~ ~uint16~ ~uint32~ ~uint64~
+
+- ~byte~ // alias for ~uint8~
+
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math/big"
+	"math"
+)
+
+func main() {
+	var MaxInt uint64 = 1<<64 -1
+	fmt.Printf("MaxInt64: %v, MaxUint: %v\n", math.MaxInt64, MaxInt)
+	// fmt.Println(170_141183_460469_231731_687303_715884_105727) // overflows int
+	bigInt := big.NewInt(0)
+	bigInt.SetString("170141183460469231731687303715884105727", 10)
+	fmt.Println(bigInt)
+	fmt.Printf(`decimal_lit = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .: %d, %d, %d
+`, 4_2, 0600, 0_600)
+	fmt.Printf(`binary|octal|hex_lit = "0" ( "box" | "BOX" ) [ "_" ] binary_digits .: %d, %o, %x, %X
+`, 0b0101, 0o600, 0xBad_Face, 0x_67_7a_2f_cc_40_c6)
+}
+#+END_SRC
+
+#+RESULTS:
+: MaxInt64: 9223372036854775807, MaxUint: 18446744073709551615
+: 170141183460469231731687303715884105727
+: decimal_lit = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .: 42, 384, 384
+: binary|octal|hex_lit = "0" ( "box" | "BOX" ) [ "_" ] binary_digits .: 5, 600, badface, 677A2FCC40C6
+
+*** Floats
+~float32~ ~float64~
+
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	fmt.Printf("%f %f %e %E %g %f %q", 0., 072.40, 1.e+0, 6.67428e-11, 1E6, .25, 1_5.2)
+}
+#+END_SRC
+#+RESULTS:
+: 0.000000 72.400000 1.000000e+00 6.674280E-11 1e+06 0.250000 %!q(float64=15.2)
+
+*** Complex
+~complex64~  ~complex128~
+
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math/cmplx"
+)
+
+func main() {
+	var z complex128 = cmplx.Sqrt(-5 + 12i)
+	fmt.Printf("Type: %T Value: %v\n", z, z)
+	fmt.Printf(`imaginary_lit = (decimal_digits | int_lit | float_lit) "i" .: %T, %v, %v`,0i, 0o123i, 1.e+0i)
+}
+#+END_SRC
+
+#+RESULTS:
+: Type: complex128 Value: (2+3i)
+: imaginary_lit = (decimal_digits | int_lit | float_lit) "i" .: complex128, (0+83i), (0+1i)
+
+** Type Convert
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math"
+)
+
+func main() {
+	var x, y int = 3, 8
+	var f float64 = math.Sqrt(float64(x*x + y*y))
+	var ff = (x + y)/2
+	var z uint = uint(f)
+	fmt.Println(x, y, f, ff, z)
+}
+#+END_SRC
+
+#+RESULTS:
+: 3 8 8.54400374531753 5 8
+
+
+* ~make~ & ~new~
 - ~make~:
   - Create a channel
   - Create a map with *space preallocated*
   - Create a slice with *space preallocated* or with *len != cap*
 - ~new~:
+  built-in function that allocates memory, but unlike its namesakes in some
+  other languages it *does not initialize the memory*, it only zeros it.
+  That is, new(T) allocates zeroed storage for a new item of type T and returns
+  its *address*, a value of type *T.
+  In Go terminology, it returns a pointer to a newly allocated zero value of type T.
+
   The main thing it makes easier is creating pointers to non-composite types.
   The two functions below are equivalent.
 #+BEGIN_SRC go :exports both
@@ -21,9 +163,9 @@ func newInt2() *int {
 
 func main() {
     fmt.Println("-- MAKE --")
-    a := make([]int, 0)
+    a := make([]int, 1)
     aPtr := &a
-    fmt.Println("pointer == nil :", *aPtr == nil)
+    fmt.Println("pointer == nil :", *aPtr == nil, a)
     fmt.Printf("pointer value: %p\n\n", *aPtr)
 
     fmt.Println("-- COMPOSITE LITERAL --")
@@ -48,8 +190,8 @@ func main() {
 #+RESULTS:
 #+begin_example
 -- MAKE --
-pointer == nil : false
-pointer value: 0x11a8c50
+pointer == nil : false [0]
+pointer value: 0xc00001a0d0
 
 -- COMPOSITE LITERAL --
 pointer == nil : false
@@ -63,6 +205,41 @@ pointer value: 0x0
 pointer == nil : true
 pointer value: 0x0
 #+end_example
+
+The zero-value-is-useful property works transitively. Consider this type
+declaration.
+
+Values of type SyncedBuffer are also ready to use immediately upon allocation or
+just declaration. In the next snippet, both p and v will work correctly without
+further arrangement.
+
+-> [[file:src/sync.mutex/README.org][sync.Mutex]]
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"sync"
+	"bytes"
+)
+
+type SyncedBuffer struct {
+	lock    sync.Mutex
+	buffer  bytes.Buffer
+}
+
+func main() {
+	p := new(SyncedBuffer)  // type *SyncedBuffer
+	var v SyncedBuffer      // type  SyncedBuffer
+
+	fmt.Println("p:", p, "lock", p.lock, "buffer:", p.buffer)
+	fmt.Println("v:", v, "lock", v.lock, "buffer:", v.buffer)
+}
+#+END_SRC
+
+#+RESULTS:
+: p: &{{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
+: v: {{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
+
 
 * Arrays & Slice
 
