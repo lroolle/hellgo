@@ -1,0 +1,534 @@
+#+TITLE: The Go Programming Language Specification
+
+
+
+* Keywords
+
+#+BEGIN_SRC go
+break        default      func         interface    select
+case         defer        go           map          struct
+chan         else         goto         package      switch
+const        fallthrough  if           range        type
+continue     for          import       return       var
+#+END_SRC
+
+
+* Types
+** Boolean
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	var ToBe bool
+	fmt.Printf("Type: %T, Value zeroed is: %v\n", ToBe, ToBe)}
+#+END_SRC
+
+#+RESULTS:
+: Type: bool, Value default is: false
+
+** String
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	var zero string
+	var hi = "Fucker"
+	var fucker = `Steve Jobs was an American entrepreneur and inventor.
+He was the CEO and co-founder of Apple Inc.`
+	fmt.Printf("hi: %q, zeroed: %q, fucker: %q", hi, zero, fucker)
+}
+#+END_SRC
+
+#+RESULTS:
+: hi: "Fucker", zeroed: "", fucker: "Steve Jobs was an American entrepreneur and inventor.\nHe was the CEO and co-founder of Apple Inc."
+
+** Numeric
+*** Integers
+**** Signed
+~int8~ ~int16~ ~int32~ ~int64~
+
+- ~int~
+  platform dependent. It is 32 bits wide on a 32-bit system and 64-bits wide on a 64-bit system.
+
+- ~rune~
+  alias for ~int32~, represents a Unicode code point
+
+**** Unsigned
+~uint~ ~uint8~ ~uint16~ ~uint32~ ~uint64~
+
+- ~byte~ // alias for ~uint8~
+
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math/big"
+	"math"
+)
+
+func main() {
+	var MaxInt uint64 = 1<<64 -1
+	fmt.Printf("MaxInt64: %v, MaxUint: %v\n", math.MaxInt64, MaxInt)
+	// fmt.Println(170_141183_460469_231731_687303_715884_105727) // overflows int
+	bigInt := big.NewInt(0)
+	bigInt.SetString("170141183460469231731687303715884105727", 10)
+	fmt.Println(bigInt)
+	fmt.Printf(`decimal_lit = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .: %d, %d, %d
+`, 4_2, 0600, 0_600)
+	fmt.Printf(`binary|octal|hex_lit = "0" ( "box" | "BOX" ) [ "_" ] binary_digits .: %d, %o, %x, %X
+`, 0b0101, 0o600, 0xBad_Face, 0x_67_7a_2f_cc_40_c6)
+}
+#+END_SRC
+
+#+RESULTS:
+: MaxInt64: 9223372036854775807, MaxUint: 18446744073709551615
+: 170141183460469231731687303715884105727
+: decimal_lit = "0" | ( "1" … "9" ) [ [ "_" ] decimal_digits ] .: 42, 384, 384
+: binary|octal|hex_lit = "0" ( "box" | "BOX" ) [ "_" ] binary_digits .: 5, 600, badface, 677A2FCC40C6
+
+*** Floats
+~float32~ ~float64~
+
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	fmt.Printf("%f %f %e %E %g %f %q", 0., 072.40, 1.e+0, 6.67428e-11, 1E6, .25, 1_5.2)
+}
+#+END_SRC
+#+RESULTS:
+: 0.000000 72.400000 1.000000e+00 6.674280E-11 1e+06 0.250000 %!q(float64=15.2)
+
+*** Complex
+~complex64~  ~complex128~
+
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math/cmplx"
+)
+
+func main() {
+	var z complex128 = cmplx.Sqrt(-5 + 12i)
+	fmt.Printf("Type: %T Value: %v\n", z, z)
+	fmt.Printf(`imaginary_lit = (decimal_digits | int_lit | float_lit) "i" .: %T, %v, %v`,0i, 0o123i, 1.e+0i)
+}
+#+END_SRC
+
+#+RESULTS:
+: Type: complex128 Value: (2+3i)
+: imaginary_lit = (decimal_digits | int_lit | float_lit) "i" .: complex128, (0+83i), (0+1i)
+
+** Type Convert
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"math"
+)
+
+func main() {
+	var x, y int = 3, 8
+	var f float64 = math.Sqrt(float64(x*x + y*y))
+	var ff = (x + y)/2
+	var z uint = uint(f)
+	fmt.Println(x, y, f, ff, z)
+}
+#+END_SRC
+
+#+RESULTS:
+: 3 8 8.54400374531753 5 8
+
+** Array
+#+BEGIN_SRC go
+import "fmt"
+
+func main() {
+	var a [2][2][2]float64
+	var aa [2]*float64 // point
+	fmt.Printf("a is like [2]([2]([2]float64)): %v, len(a): %v, type(a): %T, type(aa): %T", a, len(a), a, aa)
+}
+#+END_SRC
+#+RESULTS:
+: a is like [2]([2]([2]float64)): [[[0 0] [0 0]] [[0 0] [0 0]]], len(a): 2, type(a): [2][2][2]float64, type(aa): [2]*float64
+** Slice
+An array has a fixed size. A slice, is a dynamically-sized, flexible view into
+the elements of an array. In practice, slices are much more common than arrays.
+
+A slice does not store any data, it just describes a section of an underlying array
+#+BEGIN_SRC go
+// /usr/local/Cellar/go/1.14.3/libexec/src/runtime/slice.go
+type slice struct {
+	array unsafe.Pointer
+	len   int
+	cap   int
+}
+#+END_SRC
+
+
+#+BEGIN_SRC go
+import (
+	"fmt"
+	"reflect"
+)
+func main() {
+	var a = [6]int{2, 3, 5, 7, 11, 13}
+	var as = a[1:4]
+	var ass = a[4:]
+	// var s = make([]int, 1, 8)
+	fmt.Printf("as: %v cap(as): %v, ass: %v cap(ass): %v\n", as, cap(as), ass, cap(ass))
+	as[1] = 4
+	ass[1] = 114
+	ass = append(ass, 115, 116, 117, 118, 119)
+	fmt.Printf("as: %v cap(as): %v, ass: %v cap(ass): %v, a: %v\n", as, cap(as), ass, cap(ass), a)
+	fmt.Println(reflect.ValueOf(a).Kind())
+	fmt.Println(reflect.ValueOf(ass).Kind())
+	var twoD = [][]int {
+		{1, 2, 3},
+		{4, 5, 6},
+	}
+	fmt.Println(twoD)
+	asss := [5]int{1, 2, 3, 4, 5}
+    t := asss[1:3:3]
+	fmt.Println(t, cap(t))
+}
+#+END_SRC
+
+** Struct
+A struct is a sequence of named elements, called fields, each of which has a name and a type.
+Within a struct, non-blank field names must be unique.
+
+#+BEGIN_SRC go
+// An empty struct.
+struct {}
+
+// A struct with 6 fields.
+struct {
+	x, y int
+	u float32
+	_ float32  // padding
+	A *[]int
+	F func()
+}
+
+// A struct with four embedded fields of types T1, *T2, P.T3 and *P.T4
+struct {
+	T1        // field name is T1
+	,*T2       // field name is T2
+	P.T3      // field name is T3
+	,*P.T4     // field name is T4
+	x, y int  // field names are x and y
+	,*T1       // conflicts with embedded field *T1 and *P.T1
+	,*P.T1     // conflicts with embedded field *T1 and T1
+}
+#+END_SRC
+
+** Pointer
+#+BEGIN_SRC go
+//  The value of an uninitialized pointer is nil.
+,*Point
+,*[4]int
+#+END_SRC
+
+** Func
+#+BEGIN_SRC go
+func(prefix string, values ...int)
+#+END_SRC
+** Interface
+An interface type specifies a method set called its interface.
+#+BEGIN_SRC go
+// illegal: Bad cannot embed itself
+type Bad interface {
+	Bad
+}
+
+// illegal: Bad1 cannot embed itself using Bad2
+type Bad1 interface {
+	Bad2
+}
+type Bad2 interface {
+	Bad1
+}
+#+END_SRC
+
+** Map
+A map is an unordered group of elements of one type, called the element type,
+indexed by a set of unique keys of another type, called the key type.
+#+BEGIN_SRC go
+make(map[string]int, 100)
+
+map[string]int
+map[*T]struct{ x, y float64 }
+map[string]interface{}
+#+END_SRC
+
+** Channel
+A channel provides a mechanism for concurrently executing functions to
+communicate by sending and receiving values of a specified element type. The
+value of an uninitialized channel is nil.
+
+#+BEGIN_SRC go
+chan T          // can be used to send and receive values of type T
+chan<- float64  // can only be used to send float64s
+<-chan int      // can only be used to receive ints
+
+make(chan int, 100) // cap() = 100
+
+#+END_SRC
+
+
+* Declarations and scope ¶
+** Constant
+#+BEGIN_SRC go
+const Pi float64 = 3.14159265358979323846
+const zero = 0.0         // untyped floating-point constant
+const (
+	size int64 = 1024
+	eof        = -1  // untyped integer constant
+)
+const a, b, c = 3, 4, "foo"  // a = 3, b = 4, c = "foo", untyped integer and string constants
+const u, v float32 = 0, 3    // u = 0.0, v = 3.0
+#+END_SRC
+Within a parenthesized const declaration omitted from any but the first ConstSpec.
+#+BEGIN_SRC go
+import "fmt"
+
+const (
+	Sunday = iota
+	Monday
+	Tuesday
+	Wednesday
+	Thursday
+	Friday
+	Partyday
+	numberOfDays  // this constant is not exported
+)
+
+func main() {
+	fmt.Println(Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Partyday, numberOfDays)
+}
+#+END_SRC
+#+RESULTS:
+: 0 1 2 3 4 5 6 7
+
+Within a constant declaration, the predeclared identifier iota represents
+successive untyped integer constants. Its value is the index of the respective
+ConstSpec in that constant declaration, starting at zero. It can be used to
+construct a set of related constants
+#+BEGIN_SRC go
+const (
+	c0 = iota  // c0 == 0
+	c1 = iota  // c1 == 1
+	c2 = iota  // c2 == 2
+)
+
+const (
+	a = 1 << iota  // a == 1  (iota == 0)
+	b = 1 << iota  // b == 2  (iota == 1)
+	c = 3          // c == 3  (iota == 2, unused)
+	d = 1 << iota  // d == 8  (iota == 3)
+)
+
+// By definition, multiple uses of iota in the same ConstSpec all have the same value:
+const (
+	bit0, mask0 = 1 << iota, 1<<iota - 1  // bit0 == 1, mask0 == 0  (iota == 0)
+	bit1, mask1                           // bit1 == 2, mask1 == 1  (iota == 1)
+	_, _                                  //                        (iota == 2, unused)
+	bit3, mask3                           // bit3 == 8, mask3 == 7  (iota == 3)
+)
+#+END_SRC
+
+
+** Type declarations
+
+#+BEGIN_SRC go
+// Alias
+type (
+	nodeList = []*Node  // nodeList and []*Node are identical types
+	Polar    = polar    // Polar and polar denote identical types
+)
+
+// Type definitions
+type (
+	Point struct{ x, y float64 }  // Point and struct{ x, y float64 } are different types
+	polar Point                   // polar and Point denote different types
+)
+
+type TreeNode struct {
+	left, right *TreeNode
+	value *Comparable
+}
+
+type Block interface {
+	BlockSize() int
+	Encrypt(src, dst []byte)
+	Decrypt(src, dst []byte)
+}
+#+END_SRC
+
+
+** Variable declarations
+#+BEGIN_SRC go
+var i int
+var U, V, W float64
+var k = 0
+var x, y float32 = -1, -2
+var (
+	i       int
+	u, v, s = 2.0, 3.0, "bar"
+)
+var re, im = complexSqrt(-1)
+var _, found = entries[name]  // map lookup; only interested in "found"
+#+END_SRC
+
+
+#+BEGIN_SRC go
+// Short
+i, j := 0, 10
+f := func() int { return 7 }
+ch := make(chan int)
+r, w, _ := os.Pipe()  // os.Pipe() returns a connected pair of Files and an error, if any
+_, y, _ := coord(p)   // coord() returns three values; only interested in y coordinate
+#+END_SRC
+
+** Function declarations
+#+BEGIN_SRC go
+func IndexRune(s string, r rune) int {
+	for i, c := range s {
+		if c == r {
+			return i
+		}
+	}
+	// invalid: missing return statement
+}
+#+END_SRC
+
+
+** Method declarations
+A method is a function with a receiver. A method declaration binds an
+identifier, the method name, to a method, and associates the method with the
+receiver's base type.
+
+#+BEGIN_SRC go
+func (p *Point) Length() float64 {
+	return math.Sqrt(p.x * p.x + p.y * p.y)
+}
+
+func (p *Point) Scale(factor float64) {
+	p.x *= factor
+	p.y *= factor
+}
+#+END_SRC
+
+
+* ~make~ & ~new~
+:PROPERTIES:
+:ID:       351d7f27-e8b5-481e-99df-c089c61e9cc7
+:END:
+
+- ~make~:
+  - Create a channel
+  - Create a map with *space preallocated*
+  - Create a slice with *space preallocated* or with *len != cap*
+- ~new~:
+  built-in function that allocates memory, but unlike its namesakes in some
+  other languages it *does not initialize the memory*, it only zeros it.
+  That is, new(T) allocates zeroed storage for a new item of type T and returns
+  its *address*, a value of type *T.
+  In Go terminology, it returns a pointer to a newly allocated zero value of type T.
+
+  The main thing it makes easier is creating pointers to non-composite types.
+  The two functions below are equivalent.
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func newInt1() *int { return new(int) }
+
+func newInt2() *int {
+    var i int
+    return &i
+}
+
+func main() {
+    fmt.Println("-- MAKE --")
+    a := make([]int, 1)
+    aPtr := &a
+    fmt.Println("pointer == nil :", *aPtr == nil, a)
+    fmt.Printf("pointer value: %p\n\n", *aPtr)
+
+    fmt.Println("-- COMPOSITE LITERAL --")
+    b := []int{}
+    bPtr := &b
+    fmt.Println("pointer == nil :", *bPtr == nil)
+    fmt.Printf("pointer value: %p\n\n", *bPtr)
+
+    fmt.Println("-- NEW --")
+    cPtr := new([]int)
+    fmt.Println("pointer == nil :", *cPtr == nil)
+    fmt.Printf("pointer value: %p\n\n", *cPtr)
+
+    fmt.Println("-- VAR (not initialized) --")
+    var d []int
+    dPtr := &d
+    fmt.Println("pointer == nil :", *dPtr == nil)
+    fmt.Printf("pointer value: %p\n", *dPtr)
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+-- MAKE --
+pointer == nil : false [0]
+pointer value: 0xc0000180d0
+
+-- COMPOSITE LITERAL --
+pointer == nil : false
+pointer value: 0x11a8c50
+
+-- NEW --
+pointer == nil : true
+pointer value: 0x0
+
+-- VAR (not initialized) --
+pointer == nil : true
+pointer value: 0x0
+#+end_example
+
+The zero-value-is-useful property works transitively. Consider this type
+declaration.
+
+Values of type SyncedBuffer are also ready to use immediately upon allocation or
+just declaration. In the next snippet, both p and v will work correctly without
+further arrangement.
+
+-> [[file:src/sync.mutex/README.org][sync.Mutex]]
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"sync"
+	"bytes"
+)
+
+type SyncedBuffer struct {
+	lock    sync.Mutex
+	buffer  bytes.Buffer
+}
+
+func main() {
+	p := new(SyncedBuffer)  // type *SyncedBuffer
+	var v SyncedBuffer      // type  SyncedBuffer
+
+	fmt.Println("p:", p, "lock", p.lock, "buffer:", p.buffer)
+	fmt.Println("v:", v, "lock", v.lock, "buffer:", v.buffer)
+}
+#+END_SRC
+
+#+RESULTS:
+: p: &{{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
+: v: {{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
+
+
+
+* References
+- Golang Doc: [[https://golang.org/ref/spec#DIntroduction][The Go Programming Language Specification]]
+- [[https://moego.me/golang_spec.html][Go 编程语言规范【译】]]
+- https://stackoverflow.com/questions/9320862/why-would-i-make-or-new

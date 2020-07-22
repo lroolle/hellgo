@@ -1,0 +1,998 @@
+#+TITLE: Effective Go
+
+* Formatting
+
+- Indentation
+We use tabs for indentation and gofmt emits them by default. Use spaces only if
+you must.
+
+- Line length
+Go has no line length limit. Don't worry about overflowing a punched card. If a
+line feels too long, wrap it and indent with an extra tab.
+
+- Parentheses
+Go needs fewer parentheses than C and Java: control structures (if, for, switch)
+do not have parentheses in their syntax. Also, the operator precedence hierarchy
+is shorter and clearer, so
+#+BEGIN_SRC go :exports both
+x<<8 + y<<16
+#+END_SRC
+
+#+RESULTS:
+
+means what the spacing implies, unlike in the other languages.
+
+* Commentary
+
+Line comments(~//~) are the norm; block comments(~/**/~)appear mostly as package
+comments, but are useful within an expression or to disable large swaths of
+code.
+
+- Package Comment
+  Every package should have a package comment, a block comment preceding the package clause.
+
+#+BEGIN_SRC go :exports both
+/*
+Package regexp implements a simple library for regular expressions.
+
+The syntax of the regular expressions accepted is:
+
+    regexp:
+        concatenation { '|' concatenation }
+    concatenation:
+        { closure }
+    closure:
+        term [ '*' | '+' | '?' ]
+    term:
+        '^'
+        '$'
+        '.'
+        character
+        '[' [ '^' ] character-ranges ']'
+        '(' regexp ')'
+*/
+package regexp
+#+END_SRC
+
+#+RESULTS:
+
+If the package is simple, the package comment can be brief.
+
+#+BEGIN_SRC go :exports both
+// Package path implements utility routines for
+// manipulating slash-separated filename paths.
+#+END_SRC
+
+#+RESULTS:
+
+* Names
+
+** Package Names
+
+- the package name should be good: *short*, *concise*, *evocative*. packages are
+- given lower case, single-word names; there should be no need for underscores
+  or mixedCaps
+- package name is the base name of its source directory; the package in
+  src/encoding/base64 is imported as "encoding/base64" but has name base64, not
+  encoding_base64 and not encodingBase64.
+- the buffered reader type in the bufio package is called Reader, not BufReader,
+  because users see it as bufio.Reader, Reader does not conflict with io.Reader
+- once.Do; once.Do(setup) reads well and would not be improved by writing once.DoOrWaitUntilDone(setup).
+- ring.New.(not NewRing)
+
+*Use the package structure to help you choose good names.*
+
+** Getters
+
+If you have a field called owner (lower case, unexported), the getter method
+should be called Owner (upper case, exported), not GetOwner
+
+#+BEGIN_SRC go :exports both
+// The use of upper-case names for export provides the hook to discriminate the field from the method.
+owner := obj.Owner()
+if owner != user {
+    obj.SetOwner(user)
+}
+#+END_SRC
+
+#+RESULTS:
+
+** Interface names
+
+- By convention, one-method interfaces are named by the method name plus an ~-er~
+suffix or similar modification to construct an agent noun: =Reader=, =Writer=,
+=Formatter=, =CloseNotifier= etc.
+- call your string-converter method String not ToString
+
+** MixedCaps
+
+Finally, the convention in Go is to use =MixedCaps= or =mixedCaps= rather than
++under_scores+ to write multiword names.
+
+* Semicolons
+
+“if the newline comes after a token that could end a statement, insert a semicolon”.
+
+#+BEGIN_SRC go :exports both
+if i < f()  // wrong!
+{           // wrong!
+    g()
+}
+#+END_SRC
+
+#+RESULTS:
+
+* Control structures
+
+** If
+- statement initialization
+#+BEGIN_SRC go :exports both
+if err := file.Chmod(0664); err != nil {
+    log.Print(err)
+    return err
+}
+#+END_SRC
+
+#+RESULTS:
+
+- no ~else~ needed
+#+BEGIN_SRC go :exports both
+f, err := os.Open(name)
+if err != nil {
+    return err
+}
+d, err := f.Stat()
+if err != nil {
+    f.Close()
+    return err
+}
+codeUsing(f, d)
+#+END_SRC
+
+#+RESULTS:
+
+** Redeclaration and reassignment
+
+#+BEGIN_SRC go :exports both
+f, err := os.Open(name)
+// This duplication is legal: err is declared by the first statement,
+// but only re-assigned in the second.
+d, err := f.Stat()
+#+END_SRC
+
+#+RESULTS:
+
+** For
+
+- Three forms
+#+BEGIN_SRC go :exports both
+// Like a C for
+for init; condition; post { }
+
+// Like a C while
+for condition { }
+
+// Like a C for(;;)
+for { }
+#+END_SRC
+
+#+RESULTS:
+
+- For range
+#+BEGIN_SRC go :exports both
+for key := range m {
+    if key.expired() {
+        delete(m, key)
+    }
+}
+// for _, value := range m {}
+#+END_SRC
+
+#+RESULTS:
+
+- For ~String~: the range does more work for you
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	for pos, char := range "日本\x80語" { // \x80 is an illegal UTF-8 encoding
+		fmt.Printf("character %#U starts at byte position %d\n", char, pos)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: character U+65E5 '日' starts at byte position 0
+: character U+672C '本' starts at byte position 3
+: character U+FFFD '�' starts at byte position 6
+: character U+8A9E '語' starts at byte position 7
+
+- if you want to run multiple variables in a for you should use parallel
+  assignment (although that precludes ++ and --)
+
+#+BEGIN_SRC go :exports both
+// Reverse a
+for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
+    a[i], a[j] = a[j], a[i]
+}
+#+END_SRC
+
+#+RESULTS:
+
+** Switch
+
+- comma-separated lists
+#+BEGIN_SRC go :exports both
+func shouldEscape(c byte) bool {
+    switch c {
+    case ' ', '?', '&', '=', '#', '+', '%':
+        return true
+    }
+    return false
+}
+#+END_SRC
+
+#+RESULTS:
+
+- Break ~Switch~ in *loop*
+#+BEGIN_SRC go :exports both
+Loop:  // the loop label
+	for n := 0; n < len(src); n += size {
+		switch {
+		case src[n] < sizeOne:
+			if validateOnly {
+				break       // break switch
+			}
+			size = 1
+			update(src[n])
+
+		case src[n] < sizeTwo:
+			if n+1 >= len(src) {
+				err = errShortInput
+				break Loop  // break for
+			}
+			if validateOnly {
+				break
+			}
+			size = 2
+			update(src[n] + src[n+1]<<shift)
+		}
+	}
+#+END_SRC
+
+#+RESULTS:
+
+- Type ~Switch~
+#+BEGIN_SRC go :exports both
+var t interface{}
+t = functionOfSomeType()
+switch t := t.(type) {
+default:
+    fmt.Printf("unexpected type %T\n", t)     // %T prints whatever type t has
+case bool:
+    fmt.Printf("boolean %t\n", t)             // t has type bool
+case int:
+    fmt.Printf("integer %d\n", t)             // t has type int
+case *bool:
+    fmt.Printf("pointer to boolean %t\n", *t) // t has type *bool
+case *int:
+    fmt.Printf("pointer to integer %d\n", *t) // t has type *int
+}
+#+END_SRC
+
+#+RESULTS:
+
+* Functions
+
+** Multiple return values
+
+- Return err
+#+BEGIN_SRC go :exports both
+// it returns the number of bytes written and a non-nil error when n != len(b).
+func (file *File) Write(b []byte) (n int, err error)
+#+END_SRC
+
+#+RESULTS:
+
+- Simple-minded
+#+BEGIN_SRC go :exports both
+func nextInt(b []byte, i int) (int, int) {
+	//...
+    return x, i
+}
+
+x, i = nextInt(b, i)
+#+END_SRC
+
+#+RESULTS:
+
+** Named result parameters
+
+Result named, they are initialized to the zero values for their types when the
+function begins; if the function executes a return statement with no arguments,
+the current values of the result parameters are used as the returned values.
+
+#+BEGIN_SRC go :exports both
+func ReadFull(r Reader, buf []byte) (n int, err error) {
+    for len(buf) > 0 && err == nil {
+        var nr int
+        nr, err = r.Read(buf)
+        n += nr
+        buf = buf[nr:]
+    }
+    return  // this return named n, err
+}
+#+END_SRC
+
+#+RESULTS:
+
+** Defer
+
+The deferred call's arguments are evaluated immediately, but the function call
+is not executed until the surrounding function returns.
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	defer fmt.Println("world")
+	fmt.Println("hello")
+	for i := 0; i < 5; i++ {
+		defer fmt.Printf("%d ", i)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: hello
+: 4 3 2 1 0 world
+
+Deferred functions are executed in *LIFO* order
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func trace(s string) string {
+	fmt.Println("entering:", s)
+	return s
+}
+
+func un(s string) { fmt.Println("leaving:", s) }
+
+func a() {
+	defer un(trace("a"))
+	fmt.Println("in a")
+}
+
+func b() {
+	defer un(trace("b"))
+	fmt.Println("in b")
+	a()
+}
+
+func main() {
+	b()
+}
+#+END_SRC
+#+RESULTS:
+: entering: b
+: in b
+: entering: a
+: in a
+: leaving: a
+: leaving: b
+
+* Data
+
+** Allocation with ~new~ -> [[file:golang-spec.org::*~make~ & ~new~][golang-spec: make & new]]
+
+built-in function that allocates memory, but unlike its namesakes in some other
+languages it does *not initialize the memory*, it only *zeros it*.
+
+** Constructors and composite literals
+
+#+BEGIN_SRC go :exports both
+func NewFile(fd int, name string) *File {
+	if fd < 0 {
+		return nil
+	}
+	// f := File{fd, name, nil, 0}
+	// return &f
+	return &File{fd, name, nil, 0}
+}
+
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+const (
+	Enone int = 1
+	Eio int = 2
+	Einval int = 3
+)
+
+func main() {
+    // the key for array or slice as index
+	a := [...]string   {Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+	s := []string      {Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+	m := map[int]string{Enone: "no error", Eio: "Eio", Einval: "invalid argument"}
+
+	for x, i := range a { fmt.Println(x, i) }
+	for x, i := range s { fmt.Println(x, i) }
+	for x, i := range m { fmt.Println(x, i) }
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+0
+1 no error
+2 Eio
+3 invalid argument
+0
+1 no error
+2 Eio
+3 invalid argument
+1 no error
+2 Eio
+3 invalid argument
+#+end_example
+
+** Allocation with ~make~
+
+ It creates /slices/, /maps/, and /channels/ *only*, and it returns an
+ initialized (not zeroed) value of type T (not *T).
+
+#+BEGIN_SRC go :exports both
+var p *[]int = new([]int)       // allocates slice structure; *p == nil; rarely useful
+// Idiomatic
+var v  []int = make([]int, 100) // the slice v now refers to a new array of 100 ints
+#+END_SRC
+
+** Arrays
+
+There are major differences between the ways arrays work in Go and C. In Go,
+
+- Arrays are values. Assigning one array to another copies all the elements.
+- In particular, if you pass an array to a function, it will receive a copy of
+  the array, not a pointer to it.
+- The size of an array is part of its type. The types [10]int and [20]int are distinct.
+
+
+#+BEGIN_SRC go :exports both
+// The value property can be useful but also expensive; if you want C-like behavior
+// and efficiency, you can pass a pointer to the array.
+// But even this style isn't idiomatic Go. Use slices instead.
+
+func Sum(a *[3]float64) (sum float64) {
+    for _, v := range *a {
+        sum += v
+    }
+    return
+}
+
+array := [...]float64{7.0, 8.5, 9.1}
+x := Sum(&array)  // Note the explicit address-of operator
+#+END_SRC
+
+** Slices
+
+Slices hold references to an underlying array, and if you assign one slice to
+another, both refer to the same array.
+
+#+BEGIN_SRC go :exports both
+func (f *File) Read(buf []byte) (n int, err error)
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+func Append(slice, data []byte) []byte {
+    l := len(slice)
+    if l + len(data) > cap(slice) {  // reallocate
+        // Allocate double what's needed, for future growth.
+        newSlice := make([]byte, (l+len(data))*2)
+        // The copy function is predeclared and works for any slice type.
+        copy(newSlice, slice)
+        slice = newSlice
+    }
+    slice = slice[0:l+len(data)]
+    copy(slice[l:], data)
+    return slice
+}
+#+END_SRC
+
+** Two-dimensional slices
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	type LinesOfText [][]byte
+	text := LinesOfText{
+		[]byte("Now is the time"),
+		[]byte("for all good gophers"),
+		[]byte("to bring some fun to the party."),
+	}
+	fmt.Println(text)
+}
+#+END_SRC
+
+#+RESULTS:
+: [[78 111 119 32 105 115 32 116 104 101 32 116 105 109 101] [102 111 114 32 97 108 108 32 103 111 111 100 32 103 111 112 104 101 114 115] [116 111 32 98 114 105 110 103 32 115 111 109 101 32 102 117 110 32 116 111 32 116 104 101 32 112 97 114 116 121 46]]
+
+** Map
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	var m = map[string]int{
+		"UTC":  0*60*60,
+		"EST": -5*60*60,
+		"CST": -6*60*60,
+		"MST": -7*60*60,
+		"PST": -8*60*60,
+	}
+	// Non-exist Key will return the zero value for the type of the entries in the map
+	non, ok := m["0"]
+	fmt.Println(non, ok)
+
+	offset := func(tz string) int {
+		if seconds, ok := m[tz]; ok {
+			return seconds
+		}
+		fmt.Println("unknown time zone:", tz)
+		return 0
+	}
+	fmt.Println(offset("EST"), offset("0"))
+	// to delete
+	delete(m, "PDT")
+}
+#+END_SRC
+
+#+RESULTS:
+: 0 false
+: unknown time zone: 0
+: -18000 0
+
+** Printing
+
+- %v %+v %#v %q %x
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	type T struct {
+		a int
+		b float64
+		c string
+	}
+	t := &T{ 7, -2.35, "abc\tdef" }
+	fmt.Printf(" %%v: %v \n", t)
+	fmt.Printf("%%+v: %+v //+v annotates the fields of the structure with their names.\n", t)
+	fmt.Printf("%%#v: %#v //#v prints the value in full Go syntax.\n", t)
+	fmt.Printf(" %%q: %q  //q applies to int and runes producing a single-quoted rune constant.\n", t)
+	fmt.Printf(" %%x: %x  //x applies to int and runes\n", t)
+	fmt.Printf("%%#q: %#q //#q prints the value in full Go syntax.\n", t)
+}
+#+END_SRC
+
+#+RESULTS:
+: %v: &{7 -2.35 abc	def}
+: %+v: &{a:7 b:-2.35 c:abc	def} //+v annotates the fields of the structure with their names.
+: %#v: &main.T{a:7, b:-2.35, c:"abc\tdef"} //#v prints the value in full Go syntax.
+:  %q: &{'\a' %!q(float64=-2.35) "abc\tdef"}  //q applies to int and runes producing a single-quoted rune constant.
+:  %x: &{7 -0x1.2cccccccccccdp+01 61626309646566}  //x applies to int and runes
+: %#q: &{'\a' %!q(float64=-2.35000) `abc	def`} //#q prints the value in full Go syntax.
+
+
+- Custom method to control the print
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type T struct {
+	a int
+	b float64
+	c string
+}
+
+// a method with the signature String() string on the type.
+// this example used a pointer because that's more efficient and idiomatic for
+// struct types.
+func (t *T) String() string {
+	return fmt.Sprintf("%d/%g/%q", t.a, t.b, t.c)
+}
+
+func main() {
+	t := &T{ 7, -2.35, "abc\tdef" }
+	fmt.Printf("%v\n", t)
+}
+#+END_SRC
+#+RESULTS:
+: 7/-2.35/"abc\tdef"
+
+If you need to print values of type T as well as pointers to T, the receiver for
+String must be of value type;
+
+#+BEGIN_SRC go :exports both
+type MyString string
+
+func (m MyString) String() string {
+    return fmt.Sprintf("MyString=%s", m) // Error: will recur forever.
+}
+
+// to fix
+func (m MyString) String() string {
+    return fmt.Sprintf("MyString=%s", string(m)) // OK: note conversion.
+}
+#+END_SRC
+
+- The signature of ~Printf~ uses the type ~...interface{}~ for its final argument to
+  specify that an arbitrary number of parameters (of arbitrary type) can appear
+  after the format.
+#+BEGIN_SRC go :exports both
+// v acts like a variable of type []interface{}
+ func Printf(format string, v ...interface{}) (n int, err error) {}
+
+// Fprintln formats using the default formats for its operands and writes to w.
+// Spaces are always added between operands and a newline is appended.
+// It returns the number of bytes written and any write error encountered.
+func Fprintln(w io.Writer, a ...interface{}) (n int, err error) {
+	p := newPrinter()
+	p.doPrintln(a)
+	n, err = w.Write(p.buf)
+	p.free()
+	return
+}
+
+// Println formats using the default formats for its operands and writes to standard output.
+// Spaces are always added between operands and a newline is appended.
+// It returns the number of bytes written and any write error encountered.
+func Println(a ...interface{}) (n int, err error) {
+	return Fprintln(os.Stdout, a...)
+}
+// to tell the compiler to treat v as a list of arguments; otherwise it would just pass v as a single slice argument.
+#+END_SRC
+
+- a ~...~ parameter can be of a specific type, for instance ~...int~ for a min
+  function that chooses the least of a list of integers:
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func Min(a ...int) int {
+    min := int(^uint(0) >> 1)  // largest int
+    for _, i := range a {
+        if i < min {
+            min = i
+        }
+    }
+    return min
+}
+
+func main() {
+	fmt.Println(^uint(0)) // bitwise NOT
+	fmt.Println(^uint(0) >> 1)
+	fmt.Println(Min(2, 3, 4, 5))
+}
+#+END_SRC
+
+#+RESULTS:
+: 18446744073709551615
+: 9223372036854775807
+: 2
+
+** Append
+
+#+BEGIN_SRC go :exports both
+// where T is a placeholder for any given type.
+// You can't actually write a function in Go where the type T is determined by
+// the caller. That's why append is built in: it needs support from the compiler.
+func append(slice []T, elements ...T) []T
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	x := []int{1,2,3}
+	x = append(x, 4, 5, 6)
+	fmt.Println(x)
+
+	// Append a slice to a slice
+	y := []int{7,8,9}
+	x = append(x, y...)
+	fmt.Println(x)
+}
+#+END_SRC
+
+#+RESULTS:
+: [1 2 3 4 5 6]
+: [1 2 3 4 5 6 7 8 9]
+
+
+* Initialization
+
+
+** Constants
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+type ByteSize float64
+
+const (
+	_           = iota // ignore first 0 value by assigning to blank identifier
+	KB ByteSize = 1 << (10 * iota)
+	MB
+	GB
+	TB
+	PB
+	EB
+	ZB
+	YB
+)
+
+func (b ByteSize) String() string {
+    switch {
+    case b >= YB:
+        return fmt.Sprintf("%.2fYB", b/YB)
+    case b >= ZB:
+        return fmt.Sprintf("%.2fZB", b/ZB)
+    case b >= EB:
+        return fmt.Sprintf("%.2fEB", b/EB)
+    case b >= PB:
+        return fmt.Sprintf("%.2fPB", b/PB)
+    case b >= TB:
+        return fmt.Sprintf("%.2fTB", b/TB)
+    case b >= GB:
+        return fmt.Sprintf("%.2fGB", b/GB)
+    case b >= MB:
+        return fmt.Sprintf("%.2fMB", b/MB)
+    case b >= KB:
+        return fmt.Sprintf("%.2fKB", b/KB)
+    }
+    return fmt.Sprintf("%.2fB", b)
+}
+
+func main() {
+	fmt.Println(KB, MB, GB, YB)
+}
+#+END_SRC
+
+#+RESULTS:
+: 1.00KB 1.00MB 1.00GB 1.00YB
+
+** Variables
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"os"
+)
+
+var (
+	home   = os.Getenv("HOME")
+	user   = os.Getenv("USER")
+	gopath = os.Getenv("GOPATH")
+)
+
+func main() {
+	fmt.Println(home, user, gopath)
+}
+#+END_SRC
+
+#+RESULTS:
+: /Users/eric eric /Users/eric/go
+
+
+** The init Function
+
+- each source file can define its own *niladic*(no parameters) ~init~ function
+  to set up whatever state is required.
+- and Actually each file can have *multiple init functions*.
+- ~init~ is called after all the variable declarations in the package have
+  evaluated their initializers, and those are evaluated only after all the
+  imported packages have been initialized.
+- a common use of ~init~ functions is to verify or repair correctness of the
+  program state before real execution begins.
+
+#+BEGIN_SRC go :exports both
+func init() {
+    if user == "" {
+        log.Fatal("$USER not set")
+    }
+    if home == "" {
+        home = "/home/" + user
+    }
+    if gopath == "" {
+        gopath = home + "/go"
+    }
+    // gopath may be overridden by --gopath flag on command line.
+    flag.StringVar(&gopath, "gopath", gopath, "override default GOPATH")
+}
+#+END_SRC
+
+
+* Methods
+
+** TODO Pointers vs. Values
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type ByteSlice []byte
+
+func (p *ByteSlice) Append(data []byte) {
+	slice := *p
+	// Body as above, without the return.
+	,*p = slice
+}
+
+func (p *ByteSlice) Write(data []byte) (n int, err error) {
+	slice := *p
+	// Again as above.
+	,*p = slice
+	return len(data), nil
+}
+
+func main() {
+	var b ByteSlice
+	fmt.Fprintf(&b, "This hour has %d days\n", 7)
+	fmt.Println(b)
+	b.Write([]byte{7})
+	fmt.Println(b)
+}
+#+END_SRC
+
+#+RESULTS:
+: []
+: []
+
+* Interfaces and other types
+
+** Interfaces
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"sort"
+)
+type Sequence []int
+
+// Methods required by sort.Interface.
+func (s Sequence) Len() int {
+    return len(s)
+}
+func (s Sequence) Less(i, j int) bool {
+    return s[i] < s[j]
+}
+func (s Sequence) Swap(i, j int) {
+    s[i], s[j] = s[j], s[i]
+}
+
+// Copy returns a copy of the Sequence.
+func (s Sequence) Copy() Sequence {
+    copy := make(Sequence, 0, len(s))
+    return append(copy, s...)
+
+}
+
+// Method for printing - sorts the elements before printing.
+func (s Sequence) String() string {
+    s = s.Copy() // Make a copy; don't overwrite argument.
+    sort.Sort(s)
+    str := "[{"
+    for i, elem := range s { // Loop is O(N²); will fix that in next example.
+        if i > 0 {
+            str += " "
+        }
+        str += fmt.Sprint(elem)
+    }
+    return str + "}]"
+}
+
+func main() {
+	var s Sequence = []int{4, 3, 2, 1, 0, -1}
+	var ss = []int(s)
+	fmt.Println(ss, s)
+}
+#+END_SRC
+
+** Conversions
+
+We can share the effort (and also speed it up) if we convert the Sequence to a
+plain []int before calling Sprint.
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"sort"
+)
+
+type Sequence []int
+
+func (s Sequence) Copy() Sequence {
+    copy := make(Sequence, 0, len(s))
+    return append(copy, s...)
+}
+
+func (s Sequence) String() string {
+    s = s.Copy()
+    sort.IntSlice(s).Sort()
+    return fmt.Sprint([]int(s))
+}
+
+func main() {
+	var s Sequence = []int{3, 1, 2 }
+	fmt.Println(s)
+}
+#+END_SRC
+#+RESULTS:
+: [1 2 3]
+
+** Interface conversions and type assertions
+
+#+BEGIN_SRC go :exports both
+type Stringer interface {
+    String() string
+}
+
+var value interface{} // Value provided by caller.
+switch str := value.(type) {
+case string:
+    return str
+case Stringer:
+    return str.String()
+}
+
+#+END_SRC
+
+- To extract the string we know is in the value, we could write:
+#+BEGIN_SRC go :exports both
+str := value.(string)
+
+str, ok := value.(string)
+if ok {
+    fmt.Printf("string value is: %q\n", str)
+} else {
+    fmt.Printf("value is not a string\n")
+}
+
+if str, ok := value.(string); ok {
+    return str
+} else if str, ok := value.(Stringer); ok {
+    return str.String()
+}
+#+END_SRC
+
+
+** Generality
+
+- The ~crypto/cipher~ interfaces look like this:
+
+#+BEGIN_SRC go :exports both
+type Block interface {
+    BlockSize() int
+    Encrypt(dst, src []byte)
+    Decrypt(dst, src []byte)
+}
+
+type Stream interface {
+    XORKeyStream(dst, src []byte)
+}
+#+END_SRC
+
+- turns a block cipher into a streaming cipher; notice that the block cipher's details are abstracted away:
+
+#+BEGIN_SRC go :exports both
+// NewCTR returns a Stream that encrypts/decrypts using the given Block in
+// counter mode. The length of iv must be the same as the Block's block size.
+func NewCTR(block Block, iv []byte) Stream
+#+END_SRC
+
+
+* References
+
+- Golang Doc: [[https://golang.org/doc/effective_go.html#introduction][Effective Go]]
+- [[https://golang.org/src/][Golang Src]]
