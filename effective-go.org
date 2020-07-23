@@ -3,20 +3,21 @@
 * Formatting
 
 - Indentation
-We use tabs for indentation and gofmt emits them by default. Use spaces only if
-you must.
+  We use tabs for indentation and gofmt emits them by default. Use spaces only if
+  you must.
 
 - Line length
-Go has no line length limit. Don't worry about overflowing a punched card. If a
-line feels too long, wrap it and indent with an extra tab.
+  Go has no line length limit. Don't worry about overflowing a punched card. If a
+  line feels too long, wrap it and indent with an extra tab.
 
 - Parentheses
-Go needs fewer parentheses than C and Java: control structures (if, for, switch)
-do not have parentheses in their syntax. Also, the operator precedence hierarchy
-is shorter and clearer, so
-#+BEGIN_SRC go :exports both
-x<<8 + y<<16
-#+END_SRC
+  Go needs fewer parentheses than C and Java: control structures (if, for, switch)
+  do not have parentheses in their syntax. Also, the operator precedence hierarchy
+  is shorter and clearer, so
+
+ #+BEGIN_SRC go :exports both
+ x<<8 + y<<16
+ #+END_SRC
 
 #+RESULTS:
 
@@ -478,10 +479,40 @@ array := [...]float64{7.0, 8.5, 9.1}
 x := Sum(&array)  // Note the explicit address-of operator
 #+END_SRC
 
+- Arrays do not need to be initialized explicitly; the zero value of an array is a
+  ready-to-use array whose elements are themselves zeroed:
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	var a [3]int
+	a2 := a[2]
+	fmt.Println(a2)
+
+	var s []int
+	// s0 := s[0] // index out of range
+	s = []int{a[2]}
+	s0 := s[0]
+	fmt.Println(s0)
+}
+#+END_SRC
+
+#+RESULTS:
+: 0
+: 0
+
 ** Slices
+
+-> [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
 
 Slices hold references to an underlying array, and if you assign one slice to
 another, both refer to the same array.
+
+#+BEGIN_SRC go :exports both
+// To create a slice given array
+x := [3]string{"Лайка", "Белка", "Стрелка"}
+s := x[:] // a slice referencing the storage of x
+#+END_SRC
 
 #+BEGIN_SRC go :exports both
 func (f *File) Read(buf []byte) (n int, err error)
@@ -522,8 +553,125 @@ func main() {
 #+RESULTS:
 : [[78 111 119 32 105 115 32 116 104 101 32 116 105 109 101] [102 111 114 32 97 108 108 32 103 111 111 100 32 103 111 112 104 101 114 115] [116 111 32 98 114 105 110 103 32 115 111 109 101 32 102 117 110 32 116 111 32 116 104 101 32 112 97 114 116 121 46]]
 
-** Map
 
+*** Slice internals ([[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]) :ATTACH:
+:PROPERTIES:
+:ID:       12f979d1-9b84-4d32-aa52-92921b535d51
+:DIR:      img/
+:END:
+
+A slice is a descriptor of an array segment. It consists of
+- a pointer to the array
+- the length of the segment
+- and its capacity (the maximum length of the segment).
+
+[[attachment:_20200722_203538slice-struct.png]]
+
+Our variable s, created earlier by make([]byte, 5), is structured like this:
+
+[[attachment:_20200722_205925slice-1.png]]
+
+#+BEGIN_SRC go :exports both
+s = s[2:4]
+#+END_SRC
+
+[[attachment:_20200722_210239slice-2.png]]
+
+Slicing does not copy the slice's data. It creates a new slice value that points
+to the original array. This makes slice operations as efficient as manipulating
+array indices. Therefore, modifying the elements (not the slice itself) of a
+re-slice modifies the elements of the original slice:
+
+#+BEGIN_SRC go :exports both
+d := []byte{'r', 'o', 'a', 'd'}
+e := d[2:]
+// e == []byte{'a', 'd'}
+e[1] = 'm'
+// e == []byte{'a', 'm'}
+// d == []byte{'r', 'o', 'a', 'm'}
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+s = s[:cap(s)]
+#+END_SRC
+
+[[attachment:_20200722_212602slice-3.png]]
+
+*** Growing slices (the ~copy~ and ~append~ functions)
+built-in copy function.
+As the name suggests, copy copies data from a source slice to a destination
+slice. It returns the number of elements copied.
+
+#+BEGIN_SRC go :exports both
+func copy(dst, src []T) int
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+func AppendByte(slice []byte, data ...byte) []byte {
+    m := len(slice)
+    n := m + len(data)
+    if n > cap(slice) { // if necessary, reallocate
+        // allocate double what's needed, for future growth.
+        newSlice := make([]byte, (n+1)*2)
+        copy(newSlice, slice)
+        slice = newSlice
+    }
+    slice = slice[0:n]
+    copy(slice[m:n], data)
+    return slice
+}
+
+p := []byte{2, 3, 5}
+p = AppendByte(p, 7, 11, 13)
+// p == []byte{2, 3, 5, 7, 11, 13}
+#+END_SRC
+
+Since the zero value of a slice (nil) acts like a zero-length slice, you can
+declare a slice variable and then append to it in a loop:
+
+#+BEGIN_SRC go :exports both
+// Filter returns a new slice holding only
+// the elements of s that satisfy fn()
+func Filter(s []int, fn func(int) bool) []int {
+    var p []int // == nil
+    for _, v := range s {
+        if fn(v) {
+            p = append(p, v)
+        }
+    }
+    return p
+}
+#+END_SRC
+
+*** A possible "gotcha"
+
+This code behaves as advertised, but the returned []byte points into an array
+containing the entire file. Since the slice references the original array, as
+long as the slice is kept around the garbage collector can't release the array;
+the few useful bytes of the file keep the entire contents in memory.
+
+#+BEGIN_SRC go :exports both
+var digitRegexp = regexp.MustCompile("[0-9]+")
+
+func FindDigits(filename string) []byte {
+    b, _ := ioutil.ReadFile(filename)
+    return digitRegexp.Find(b)
+}
+#+END_SRC
+
+To fix this problem one can copy the interesting data to a new slice before returning it:
+#+BEGIN_SRC go :exports both
+func CopyDigits(filename string) []byte {
+    b, _ := ioutil.ReadFile(filename)
+    b = digitRegexp.Find(b)
+    c := make([]byte, len(b))
+    copy(c, b)
+    return c
+}
+#+END_SRC
+
+
+** Map
 #+BEGIN_SRC go :exports both
 import "fmt"
 
@@ -551,11 +699,6 @@ func main() {
 	delete(m, "PDT")
 }
 #+END_SRC
-
-#+RESULTS:
-: 0 false
-: unknown time zone: 0
-: -18000 0
 
 ** Printing
 
@@ -711,7 +854,6 @@ func main() {
 : [1 2 3 4 5 6]
 : [1 2 3 4 5 6 7 8 9]
 
-
 * Initialization
 
 
@@ -812,7 +954,6 @@ func init() {
     flag.StringVar(&gopath, "gopath", gopath, "override default GOPATH")
 }
 #+END_SRC
-
 
 * Methods
 
@@ -991,8 +1132,162 @@ type Stream interface {
 func NewCTR(block Block, iv []byte) Stream
 #+END_SRC
 
+NewCTR applies not just to one specific encryption algorithm and data source but
+to any implementation of the Block interface and any Stream.
+
+** TODO Interfaces and methods
+
+- Any object that implements Handler can serve HTTP requests.
+
+#+BEGIN_SRC go :exports both
+type Handler interface {
+    ServeHTTP(ResponseWriter, *Request)
+}
+#+END_SRC
+
+- Here's a trivial but complete implementation of a handler to count the number
+  of times the page is visited.
+#+BEGIN_SRC go :exports both
+// Simple counter server.
+import (
+	"fmt"
+	"net/http"
+)
+type Counter struct {
+    n int
+}
+
+func (ctr *Counter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+    ctr.n++
+    fmt.Fprintf(w, "counter = %d\n", ctr.n)
+}
+
+func main() {
+    ctr := new(Counter)
+    http.Handle("/counter", ctr)
+}
+#+END_SRC
+
+- But why make Counter a struct? An integer is all that's needed.
+  (The receiver needs to be a pointer so the increment is visible to the caller.)
+
+* The blank identifier
+
+- The blank identifier in multiple assignment
+
+#+BEGIN_SRC go :exports both
+if _, err := os.Stat(path); os.IsNotExist(err) {
+	fmt.Printf("%s does not exist\n", path)
+}
+
+// Ignore the err
+// Bad! This code will crash if path does not exist.
+fi, _ := os.Stat(path)
+if fi.IsDir() {
+    fmt.Printf("%s is a directory\n", path)
+}
+#+END_SRC
+
+** Unused imports and variables
+
+- It is an error to import a package or to declare a variable without using it.
+
+- Assigning the unused variable fd to the blank identifier will silence the unused variable error
+
+#+BEGIN_SRC go :exports both
+package main
+
+import (
+    "fmt"
+    "io"
+    "log"
+    "os"
+)
+
+var _ = fmt.Printf // For debugging; delete when done.
+var _ io.Reader    // For debugging; delete when done.
+
+func main() {
+    fd, err := os.Open("test.go")
+    if err != nil {
+        log.Fatal(err)
+    }
+    // TEDO: use fd.
+    _ = fd
+}
+#+END_SRC
+
+** Import for side effect
+ it is useful to import a package only for its side effects, without any explicit use.
+ For example, during its init function, the net/http/pprof package registers
+ HTTP handlers that provide debugging information.
+
+#+BEGIN_SRC go :exports both
+import _ "net/http/pprof"
+#+END_SRC
+
+
+** Interface checks
+
+- The encoder checks this property at run time with a type assertion like
+#+BEGIN_SRC go :exports both
+m, ok := val.(json.Marshaler)
+#+END_SRC
+
+- use the blank identifier to ignore the type-asserted value
+#+BEGIN_SRC go :exports both
+if _, ok := val.(json.Marshaler); ok {
+    fmt.Printf("value %v of type %T implements json.Marshaler\n", val, val)
+}
+#+END_SRC
+
+- To guarantee that the implementation, a global declaration using the blank
+  identifier can be used in the package
+#+BEGIN_SRC go :exports both
+// Should the json.Marshaler interface change, this package will no longer
+// compile and we will be on notice that it needs to be updated.
+var _ json.Marshaler = (*RawMessage)(nil)
+#+END_SRC
+
+* TODO Embedding
+
+- Embedded interface
+
+#+BEGIN_SRC go :exports both
+type Reader interface {
+    Read(p []byte) (n int, err error)
+}
+
+type Writer interface {
+    Write(p []byte) (n int, err error)
+}
+
+// ReadWriter is the interface that combines the Reader and Writer interfaces.
+type ReadWriter interface {
+    Reader
+    Writer
+}
+#+END_SRC
+/Only interfaces can be embedded within interfaces./
+
+#+BEGIN_SRC go :exports both
+// ReadWriter stores pointers to a Reader and a Writer.
+// It implements io.ReadWriter.
+type ReadWriter struct {
+    *Reader  // *bufio.Reader
+    *Writer  // *bufio.Writer
+}
+#+END_SRC
+
+* TODO Concurrency
+
+** Share by communicating
+
+- *Do not communicate by sharing memory; instead, share memory by Dcommunicatingd.*
+
 
 * References
 
 - Golang Doc: [[https://golang.org/doc/effective_go.html#introduction][Effective Go]]
 - [[https://golang.org/src/][Golang Src]]
+- [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]

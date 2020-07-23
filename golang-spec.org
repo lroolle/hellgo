@@ -149,12 +149,13 @@ func main() {
 #+END_SRC
 #+RESULTS:
 : a is like [2]([2]([2]float64)): [[[0 0] [0 0]] [[0 0] [0 0]]], len(a): 2, type(a): [2][2][2]float64, type(aa): [2]*float64
+
 ** Slice
 An array has a fixed size. A slice, is a dynamically-sized, flexible view into
 the elements of an array. In practice, slices are much more common than arrays.
 
 A slice does not store any data, it just describes a section of an underlying array
-#+BEGIN_SRC go
+#+BEGIN_SRC go :exports both
 // /usr/local/Cellar/go/1.14.3/libexec/src/runtime/slice.go
 type slice struct {
 	array unsafe.Pointer
@@ -163,8 +164,7 @@ type slice struct {
 }
 #+END_SRC
 
-
-#+BEGIN_SRC go
+#+BEGIN_SRC go :exports both
 import (
 	"fmt"
 	"reflect"

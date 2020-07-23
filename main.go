@@ -2,18 +2,30 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"net/http"
 )
 
-func main() {
-	const name, age = "Kim", 22
-	n, err := fmt.Fprintf(os.Stdout, "%s is %d years old.\n", name, age)
+type Counter struct {
+	n int
+}
 
-	// The n and err return values from Fprintf are
-	// those returned by the underlying io.Writer.
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Fprintf: %v\n", err)
-	}
-	fmt.Printf("%d bytes written.\n", n)
+func (ctr *Counter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ctr.n++
+	fmt.Fprintf(w, "counter = %d\n", ctr.n)
+}
+
+// A channel that sends a notification on each visit.
+// (Probably want the channel to be buffered.)
+type Chan chan *http.Request
+
+func (ch Chan) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	ch <- req
+	fmt.Fprint(w, "notification sent")
+}
+
+func main() {
+	ctr := new(Counter)
+	http.Handle("/counter", ctr)
+	fmt.Println(ctr.n)
 
 }
