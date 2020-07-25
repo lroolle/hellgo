@@ -1,0 +1,380 @@
+#+TITLE: Golang Deepdive
+#+AUTHOR: Eric dive course by Ccmouse
+
+* Chapter 01: Index 概览
+
+** 基本语法
+
+- 变量
+- 选择
+- 循环
+- 指针
+- 数组
+- 容器
+
+** 面向*接口*
+
+- 结构体
+- Duck Typing 概念
+- 组合的思想
+
+** 函数式编程
+
+- 闭包
+- 例题
+
+** 工程化
+
+- 资源管理
+- 错误处理
+- 测试和文档
+- 性能调优
+
+** 并发编程 :FOCUS:
+
+- goroutine
+- channel
+- 理解调度器
+- 多样的例题
+
+** 实战项目
+
+- 分布式爬虫：相亲网站资料
+
+
+* Chapter 02: Basic Grammar 基本语法
+:PROPERTIES:
+:DIR:      img/
+:END:
+
+** Var 赋值
+
+#+BEGIN_SRC go :exports both
+package main
+// Golang 变量都是包变量，无全局变量
+import "fmt"
+
+var (
+	i int = 10000000000
+	s string = "Go Fuck"
+// i := 0 // Syntax error
+)
+
+
+func variableZeroValue() {
+	var a int
+	var s string
+	fmt.Printf("%d %q\n", a, s)
+}
+
+func variableInitValue() {
+	var a, b int = 3, 4
+	var s string  = "ABC"
+	fmt.Println(a, b, s)
+}
+
+func variableDeduction() {
+	a, b, s := 6, 7, "CDE"
+	fmt.Println(a, b, s)
+}
+
+func main() {
+	fmt.Println("Deep Dive")
+	variableZeroValue()
+	variableInitValue()
+	variableDeduction()
+	fmt.Println(i, s)
+}
+#+END_SRC
+
+#+RESULTS:
+: Deep Dive
+: 0 ""
+: 3 4 ABC
+: 6 7 CDE
+: 10000000000 Go Fuck
+
+** Base Types 内建变量类型
+:PROPERTIES:
+:ID:  474171a9-5982-40af-80dc-a75dfd1448dd
+:DIR: img/
+:END:
+
+- bool string
+- (u)int, (u)int8, (u)int16, (u)int32, (u)int64, uintptr
+- byte rune
+- float32, float64, complex64, complex128
+
+*** Complex 复数
+
+i = 根号-1
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"math"
+	"math/cmplx"
+)
+
+// 欧拉公式
+func euler() {
+	e := cmplx.Pow(math.E, 1i * math.Pi ) + 1
+	fmt.Printf("%.3f", e)
+}
+
+func main() {
+	euler()
+}
+#+END_SRC
+
+#+RESULTS:
+: (0.000+0.000i)
+
+*** 强制类型转换
+
+- 都是强制的，没有隐式
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"math"
+)
+
+func triangle() {
+	var a, b int = 3, 4
+	var c int
+	c = int(math.Sqrt(float64(a * a + b * b)))
+	fmt.Println(c)
+}
+
+func main() {
+	triangle()
+}
+#+END_SRC
+
+#+RESULTS:
+: 5
+
+*** 常量
+- 常量数值可以作为各类型适用（不规定类型）
+- 命名不需要大写
+- 一定要赋初始值
+
+#+BEGIN_SRC go :exports both
+const (
+	b = 1 << (iota * 10)
+	kb
+	mb
+	gb
+	tb
+)
+#+END_SRC
+
+#+RESULTS:
+
+** If Else
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"io/ioutil"
+)
+func main() {
+	if contents, err := ioutil.ReadFile("notexistfile"); err == nil {
+		fmt.Println(string(contents))
+	} else {
+		fmt.Println(err)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: open notexistfile: no such file or directory
+
+** Switch
+
+golang Switch 自动 break
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+func grade(score int) string {
+	switch {
+	case score < 0 || score > 100:
+		panic(fmt.Sprintf("Wrong score: %v", score))
+	case score < 60:
+		return "F"
+	case score < 70:
+		return "E"
+	case score < 80:
+		return "D"
+	}
+	return "FF"
+}
+func main() {
+   fmt.Println(grade(64), grade(101)) // panic
+}
+#+END_SRC
+
+#+RESULTS:
+
+** For
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"os"
+	"bufio"
+	"strconv"
+)
+
+func toBinary(n int) string {
+	res := ""
+	for ; n > 0; n /= 2{
+		lsb := n % 2
+		res = strconv.Itoa(lsb) + res
+	}
+	return res
+}
+
+func readLine(filename string) {
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+}
+
+func main() {
+	fmt.Println(
+		toBinary(5), // 101
+		toBinary(13), // 1011 --> 1101
+	)
+	readLine("README.org")
+}
+#+END_SRC
+
+#+RESULTS:
+: 101 1101
+: #+TITLE: Readme
+
+** Func
+
+- 返回值尽量写明确
+- 多值返回一般返回 Err
+
+#+BEGIN_SRC go :exports both
+return 0, fmt.Errorf("Error ", ...)
+#+END_SRC
+
+#+RESULTS:
+
+- 匿名函数
+
+#+BEGIN_SRC go :exports both
+package main
+import (
+	"fmt"
+	"reflect"
+	"runtime"
+	"math"
+)
+func apply(op func(float64, float64) float64, a, b int) float64 {
+	// pc, _, _, _ := runtime.Caller(1)
+	p := reflect.ValueOf(op).Pointer()
+	opName := runtime.FuncForPC(p).Name()
+	fmt.Println(opName)
+	return op(float64(a), float64(b))
+}
+func main() {
+   fmt.Println(apply(math.Pow, 3, 4))
+   fmt.Println(apply(func(a, b float64) float64 {
+	   return math.Pow(a, b)
+   }, 3, 4))
+}
+#+END_SRC
+
+#+RESULTS:
+: math.Pow
+: 81
+: main.main.func1
+: 81
+
+- 可变参数列表
+
+#+BEGIN_SRC go :exports both
+func add(args ...int) int{}
+add(1, 2, 3, 4)
+#+END_SRC
+
+** Pointer 指针 :ATTACH:
+
+#+BEGIN_SRC go :exports both
+var a int = 2
+var pa *int = &a
+*pa = 3 // a = 3
+#+END_SRC
+
+- Golang 参数传递：
+  - 值传递？：*Golang 只有值传递一种方式*
+  - 引用传递？
+
+#+BEGIN_SRC cpp
+#include<stdio.h>
+void pass_by_val(int a) {
+  a++;
+}
+void pass_by_ref(int& a) {
+  a++;
+}
+
+int main(int argc, char *argv[]) {
+    int a = 3;
+    pass_by_val(a);
+    printf("pass_by_val: %d\n", a);
+    pass_by_ref(a);
+    printf("pass_by_ref: %d\n", a);
+    return 0;
+}
+
+#+END_SRC
+
+#+RESULTS:
+| pass_by_val: | 3 |
+| pass_by_ref: | 4 |
+
+1. Golang 传参1: 拷贝参数值
+[[attachment:_20200725_030823screenshot.png]]
+
+2. Golang 传参2: 指针传递，达到引用传递效果
+[[attachment:_20200725_030532screenshot.png]]
+
+3. Golang 传参3: 自定义 Object 是要考虑当作值来用还是指针来用
+[[attachment:_20200725_031102screenshot.png]]
+
+
+- 交换值
+#+BEGIN_SRC go :exports both
+func swapP(a, b int) return type {
+	,*a, *b = *b, *a
+}
+
+swap(&a, &b)
+
+func swap(a, b int) (int, int){
+	return b, a
+}
+#+END_SRC
+
+
+* Chapter 03: 内建容器
+:PROPERTIES:
+:DIR:      img/
+:END:
+
+** 数组
+** 切片
+** Map
+** 字符串处理
