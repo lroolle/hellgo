@@ -568,17 +568,18 @@ A slice is a descriptor of an array segment. It consists of
 - the length of the segment
 - and its capacity (the maximum length of the segment).
 
-[[attachment:_20200722_203538slice-struct.png]]
+
+[[attachment:_20200725_011025slice-struct.png]]
 
 Our variable s, created earlier by make([]byte, 5), is structured like this:
 
-[[attachment:_20200722_205925slice-1.png]]
+[[attachment:_20200725_011002slice-1.png]]
+
 
 #+BEGIN_SRC go :exports both
 s = s[2:4]
 #+END_SRC
 
-[[attachment:_20200722_210239slice-2.png]]
 
 Slicing does not copy the slice's data. It creates a new slice value that points
 to the original array. This makes slice operations as efficient as manipulating
@@ -598,7 +599,6 @@ e[1] = 'm'
 s = s[:cap(s)]
 #+END_SRC
 
-[[attachment:_20200722_212602slice-3.png]]
 
 *** Growing slices (the ~copy~ and ~append~ functions)
 built-in copy function.
