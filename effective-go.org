@@ -574,7 +574,7 @@ A slice is a descriptor of an array segment. It consists of
 
 [[attachment:_20200725_011025slice-struct.png]]
 
-[[./img/20200725_011025slice-struct.png]]
+[[./img/_20200725_011025slice-struct.png]]
 
 Our variable s, created earlier by make([]byte, 5), is structured like this:
 
