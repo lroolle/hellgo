@@ -1,66 +1,66 @@
 
 # Table of Contents
 
-1.  [Formatting](#org8d160ff)
-2.  [Commentary](#org9c9ff02)
-3.  [Names](#org5f93c94)
-    1.  [Package Names](#orgb7015a9)
-    2.  [Getters](#org2da569a)
-    3.  [Interface names](#orgf4ceed7)
-    4.  [MixedCaps](#orgcc18255)
-4.  [Semicolons](#org7d5f828)
-5.  [Control structures](#org0cfed3d)
-    1.  [If](#org447134c)
-    2.  [Redeclaration and reassignment](#org539de00)
-    3.  [For](#org7e27607)
-    4.  [Switch](#org1af5b79)
-6.  [Functions](#org2bd594d)
-    1.  [Multiple return values](#orgd6424dd)
-    2.  [Named result parameters](#org542d94e)
-    3.  [Defer](#orga0b0f0d)
-7.  [Data](#org528cecf)
-    1.  [Allocation with `new`](#org7abddf6)
-    2.  [Constructors and composite literals](#orge13ab2a)
-    3.  [Allocation with `make`](#orgfb471a9)
-    4.  [Arrays](#orga85c840)
-    5.  [Slices](#org41d6bbd)
-    6.  [Two-dimensional slices](#org8263566)
-        1.  [Slice internals (Go Slices: usage and internals)](#orgefea994):ATTACH:
-        2.  [Growing slices (the `copy` and `append` functions)](#org03062fb)
-        3.  [A possible &ldquo;gotcha&rdquo;](#org79b29aa)
-    7.  [Map](#orgccf7f58)
-    8.  [Printing](#org995d932)
-    9.  [Append](#org545ef71)
-8.  [Initialization](#org5fe8a97)
-    1.  [Constants](#orgcf94293)
-    2.  [Variables](#org4393214)
-    3.  [The init Function](#org8a071fe)
-9.  [Methods](#org7bfbc72)
-    1.  [Pointers vs. Values](#orgb6650c3)
-10. [Interfaces and other types](#orga5fe412)
-    1.  [Interfaces](#orgba96913)
-    2.  [Conversions](#orgfc5a6ce)
-    3.  [Interface conversions and type assertions](#orgd5a9920)
-    4.  [Generality](#org93d2316)
-    5.  [Interfaces and methods](#orgf7b30b8)
-11. [The blank identifier](#org5735754)
-    1.  [Unused imports and variables](#orga7a5e4a)
-    2.  [Import for side effect](#org02bc32e)
-    3.  [Interface checks](#org20f76a0)
-12. [Embedding](#org475d19f)
-13. [Concurrency](#org0ad0522)
-    1.  [Share by communicating](#org969c2d3)
-14. [Errors](#orga1e8a30)
-    1.  [By convention](#orgd023c62)
-    2.  [Panic](#org99e21fc)
-    3.  [Recover](#orgf3c3c3c)
-15. [A Web Server](#orgdefac4e)
-16. [Go Docs](#org575871f)
-17. [References](#orgb0fa0a9):W:
+1.  [Formatting](#orgd471c97)
+2.  [Commentary](#orgb273f55)
+3.  [Names](#org179fcdc)
+    1.  [Package Names](#orgedb1089)
+    2.  [Getters](#org0fd40fc)
+    3.  [Interface names](#org208c398)
+    4.  [MixedCaps](#org5efc688)
+4.  [Semicolons](#orgeed7d87)
+5.  [Control structures](#org388a746)
+    1.  [If](#orgccd25f7)
+    2.  [Redeclaration and reassignment](#orgee4eec8)
+    3.  [For](#orgdc4dd0f)
+    4.  [Switch](#orgebc066c)
+6.  [Functions](#orgb477502)
+    1.  [Multiple return values](#org9ed68e4)
+    2.  [Named result parameters](#org395d71a)
+    3.  [Defer](#org99fbf0d)
+7.  [Data](#orgce0b44a)
+    1.  [Allocation with `new`](#org598e7f8)
+    2.  [Constructors and composite literals](#orgcb56867)
+    3.  [Allocation with `make`](#org66d3158)
+    4.  [Arrays](#org074edc0)
+    5.  [Slices](#orga4527ab)
+    6.  [Two-dimensional slices](#org2e76428)
+        1.  [Slice internals (Go Slices: usage and internals)](#org24ed535):ATTACH:
+        2.  [Growing slices (the `copy` and `append` functions)](#org817b1dd)
+        3.  [A possible &ldquo;gotcha&rdquo;](#org864ceb6)
+    7.  [Map](#orgb1127d3)
+    8.  [Printing](#org1adcb66)
+    9.  [Append](#org34147ad)
+8.  [Initialization](#org5db1722)
+    1.  [Constants](#org98ee2b5)
+    2.  [Variables](#orgc99f96b)
+    3.  [The init Function](#org1d77539)
+9.  [Methods](#org950226e)
+    1.  [Pointers vs. Values](#org2554a63)
+10. [Interfaces and other types](#org33ea0e0)
+    1.  [Interfaces](#org6aff169)
+    2.  [Conversions](#org336a867)
+    3.  [Interface conversions and type assertions](#org7d7b01f)
+    4.  [Generality](#orgb5332f3)
+    5.  [Interfaces and methods](#org2fced1f)
+11. [The blank identifier](#org06685bb)
+    1.  [Unused imports and variables](#org835dba3)
+    2.  [Import for side effect](#orgf929151)
+    3.  [Interface checks](#org35676cb)
+12. [Embedding](#orgf6eefdb)
+13. [Concurrency](#orgcd47c9f)
+    1.  [Share by communicating](#orgb8ee767)
+14. [Errors](#org90f6c1f)
+    1.  [By convention](#org7e01bc2)
+    2.  [Panic](#orgca5022a)
+    3.  [Recover](#org7329a72)
+15. [A Web Server](#orga54f526)
+16. [Go Docs](#org8e64fd0)
+17. [References](#orgd478267):W:
 
 
 
-<a id="org8d160ff"></a>
+<a id="orgd471c97"></a>
 
 # Formatting
 
@@ -85,7 +85,7 @@
 means what the spacing implies, unlike in the other languages.
 
 
-<a id="org9c9ff02"></a>
+<a id="orgb273f55"></a>
 
 # Commentary
 
@@ -123,12 +123,12 @@ If the package is simple, the package comment can be brief.
     // manipulating slash-separated filename paths.
 
 
-<a id="org5f93c94"></a>
+<a id="org179fcdc"></a>
 
 # Names
 
 
-<a id="orgb7015a9"></a>
+<a id="orgedb1089"></a>
 
 ## Package Names
 
@@ -146,7 +146,7 @@ If the package is simple, the package comment can be brief.
 **Use the package structure to help you choose good names.**
 
 
-<a id="org2da569a"></a>
+<a id="org0fd40fc"></a>
 
 ## Getters
 
@@ -160,7 +160,7 @@ should be called Owner (upper case, exported), not GetOwner
     }
 
 
-<a id="orgf4ceed7"></a>
+<a id="org208c398"></a>
 
 ## Interface names
 
@@ -170,7 +170,7 @@ should be called Owner (upper case, exported), not GetOwner
 -   call your string-converter method String not ToString
 
 
-<a id="orgcc18255"></a>
+<a id="org5efc688"></a>
 
 ## MixedCaps
 
@@ -178,7 +178,7 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
 <del>under<sub>scores</sub></del> to write multiword names.
 
 
-<a id="org7d5f828"></a>
+<a id="orgeed7d87"></a>
 
 # Semicolons
 
@@ -190,12 +190,12 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     }
 
 
-<a id="org0cfed3d"></a>
+<a id="org388a746"></a>
 
 # Control structures
 
 
-<a id="org447134c"></a>
+<a id="orgccd25f7"></a>
 
 ## If
 
@@ -220,7 +220,7 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     codeUsing(f, d)
 
 
-<a id="org539de00"></a>
+<a id="orgee4eec8"></a>
 
 ## Redeclaration and reassignment
 
@@ -230,7 +230,7 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     d, err := f.Stat()
 
 
-<a id="org7e27607"></a>
+<a id="orgdc4dd0f"></a>
 
 ## For
 
@@ -278,7 +278,7 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     }
 
 
-<a id="org1af5b79"></a>
+<a id="orgebc066c"></a>
 
 ## Switch
 
@@ -335,12 +335,12 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     }
 
 
-<a id="org2bd594d"></a>
+<a id="orgb477502"></a>
 
 # Functions
 
 
-<a id="orgd6424dd"></a>
+<a id="org9ed68e4"></a>
 
 ## Multiple return values
 
@@ -359,7 +359,7 @@ Finally, the convention in Go is to use `MixedCaps` or `mixedCaps` rather than
     x, i = nextInt(b, i)
 
 
-<a id="org542d94e"></a>
+<a id="org395d71a"></a>
 
 ## Named result parameters
 
@@ -378,7 +378,7 @@ the current values of the result parameters are used as the returned values.
     }
 
 
-<a id="orga0b0f0d"></a>
+<a id="org99fbf0d"></a>
 
 ## Defer
 
@@ -432,12 +432,12 @@ Deferred functions are executed in **LIFO** order
     leaving: b
 
 
-<a id="org528cecf"></a>
+<a id="orgce0b44a"></a>
 
 # Data
 
 
-<a id="org7abddf6"></a>
+<a id="org598e7f8"></a>
 
 ## Allocation with `new`
 
@@ -447,7 +447,7 @@ built-in function that allocates memory, but unlike its namesakes in some other
 languages it does **not initialize the memory**, it only **zeros it**.
 
 
-<a id="orge13ab2a"></a>
+<a id="orgcb56867"></a>
 
 ## Constructors and composite literals
 
@@ -487,12 +487,12 @@ languages it does **not initialize the memory**, it only **zeros it**.
     1 no error
     2 Eio
     3 invalid argument
+    1 no error
     2 Eio
     3 invalid argument
-    1 no error
 
 
-<a id="orgfb471a9"></a>
+<a id="org66d3158"></a>
 
 ## Allocation with `make`
 
@@ -504,7 +504,7 @@ initialized (not zeroed) value of type T (not \*T).
     var v  []int = make([]int, 100) // the slice v now refers to a new array of 100 ints
 
 
-<a id="orga85c840"></a>
+<a id="org074edc0"></a>
 
 ## Arrays
 
@@ -550,7 +550,7 @@ There are major differences between the ways arrays work in Go and C. In Go,
     0
 
 
-<a id="org41d6bbd"></a>
+<a id="orga4527ab"></a>
 
 ## Slices
 
@@ -580,7 +580,7 @@ another, both refer to the same array.
     }
 
 
-<a id="org8263566"></a>
+<a id="org2e76428"></a>
 
 ## Two-dimensional slices
 
@@ -599,7 +599,7 @@ another, both refer to the same array.
     [[78 111 119 32 105 115 32 116 104 101 32 116 105 109 101] [102 111 114 32 97 108 108 32 103 111 111 100 32 103 111 112 104 101 114 115] [116 111 32 98 114 105 110 103 32 115 111 109 101 32 102 117 110 32 116 111 32 116 104 101 32 112 97 114 116 121 46]]
 
 
-<a id="orgefea994"></a>
+<a id="org24ed535"></a>
 
 ### Slice internals ([Go Slices: usage and internals](https://blog.golang.org/slices-intro))     :ATTACH:
 
@@ -632,7 +632,7 @@ re-slice modifies the elements of the original slice:
     s = s[:cap(s)]
 
 
-<a id="org03062fb"></a>
+<a id="org817b1dd"></a>
 
 ### Growing slices (the `copy` and `append` functions)
 
@@ -676,7 +676,7 @@ declare a slice variable and then append to it in a loop:
     }
 
 
-<a id="org79b29aa"></a>
+<a id="org864ceb6"></a>
 
 ### A possible &ldquo;gotcha&rdquo;
 
@@ -703,7 +703,7 @@ To fix this problem one can copy the interesting data to a new slice before retu
     }
 
 
-<a id="orgccf7f58"></a>
+<a id="orgb1127d3"></a>
 
 ## Map
 
@@ -738,7 +738,7 @@ To fix this problem one can copy the interesting data to a new slice before retu
     -18000 0
 
 
-<a id="org995d932"></a>
+<a id="org1adcb66"></a>
 
 ## Printing
 
@@ -858,7 +858,7 @@ String must be of value type;
     2
 
 
-<a id="org545ef71"></a>
+<a id="org34147ad"></a>
 
 ## Append
 
@@ -884,12 +884,12 @@ String must be of value type;
     [1 2 3 4 5 6 7 8 9]
 
 
-<a id="org5fe8a97"></a>
+<a id="org5db1722"></a>
 
 # Initialization
 
 
-<a id="orgcf94293"></a>
+<a id="org98ee2b5"></a>
 
 ## Constants
 
@@ -937,7 +937,7 @@ String must be of value type;
     1.00KB 1.00MB 1.00GB 1.00YB
 
 
-<a id="org4393214"></a>
+<a id="orgc99f96b"></a>
 
 ## Variables
 
@@ -959,7 +959,7 @@ String must be of value type;
     /Users/eric eric /Users/eric/go
 
 
-<a id="org8a071fe"></a>
+<a id="org1d77539"></a>
 
 ## The init Function
 
@@ -987,12 +987,12 @@ String must be of value type;
     }
 
 
-<a id="org7bfbc72"></a>
+<a id="org950226e"></a>
 
 # Methods
 
 
-<a id="orgb6650c3"></a>
+<a id="org2554a63"></a>
 
 ## TODO Pointers vs. Values
 
@@ -1025,12 +1025,12 @@ String must be of value type;
     []
 
 
-<a id="orga5fe412"></a>
+<a id="org33ea0e0"></a>
 
 # Interfaces and other types
 
 
-<a id="orgba96913"></a>
+<a id="org6aff169"></a>
 
 ## Interfaces
 
@@ -1081,7 +1081,7 @@ String must be of value type;
     [4 3 2 1 0 -1] [{-1 0 1 2 3 4}]
 
 
-<a id="orgfc5a6ce"></a>
+<a id="org336a867"></a>
 
 ## Conversions
 
@@ -1114,7 +1114,7 @@ plain []int before calling Sprint.
     [1 2 3]
 
 
-<a id="orgd5a9920"></a>
+<a id="org7d7b01f"></a>
 
 ## Interface conversions and type assertions
 
@@ -1148,7 +1148,7 @@ plain []int before calling Sprint.
     }
 
 
-<a id="org93d2316"></a>
+<a id="orgb5332f3"></a>
 
 ## Generality
 
@@ -1174,7 +1174,7 @@ NewCTR applies not just to one specific encryption algorithm and data source but
 to any implementation of the Block interface and any Stream.
 
 
-<a id="orgf7b30b8"></a>
+<a id="org2fced1f"></a>
 
 ## TODO Interfaces and methods
 
@@ -1210,7 +1210,7 @@ to any implementation of the Block interface and any Stream.
     (The receiver needs to be a pointer so the increment is visible to the caller.)
 
 
-<a id="org5735754"></a>
+<a id="org06685bb"></a>
 
 # The blank identifier
 
@@ -1228,7 +1228,7 @@ to any implementation of the Block interface and any Stream.
     }
 
 
-<a id="orga7a5e4a"></a>
+<a id="org835dba3"></a>
 
 ## Unused imports and variables
 
@@ -1258,7 +1258,7 @@ to any implementation of the Block interface and any Stream.
     }
 
 
-<a id="org02bc32e"></a>
+<a id="orgf929151"></a>
 
 ## Import for side effect
 
@@ -1269,7 +1269,7 @@ HTTP handlers that provide debugging information.
     import _ "net/http/pprof"
 
 
-<a id="org20f76a0"></a>
+<a id="org35676cb"></a>
 
 ## Interface checks
 
@@ -1291,7 +1291,7 @@ HTTP handlers that provide debugging information.
     var _ json.Marshaler = (*RawMessage)(nil)
 
 
-<a id="org475d19f"></a>
+<a id="orgf6eefdb"></a>
 
 # TODO Embedding
 
@@ -1321,24 +1321,24 @@ HTTP handlers that provide debugging information.
     }
 
 
-<a id="org0ad0522"></a>
+<a id="orgcd47c9f"></a>
 
 # TODO Concurrency
 
 
-<a id="org969c2d3"></a>
+<a id="orgb8ee767"></a>
 
 ## Share by communicating
 
 -   **Do not communicate by sharing memory; instead, share memory by Dcommunicatingd.**
 
 
-<a id="orga1e8a30"></a>
+<a id="org90f6c1f"></a>
 
 # Errors
 
 
-<a id="orgd023c62"></a>
+<a id="org7e01bc2"></a>
 
 ## By convention
 
@@ -1377,7 +1377,7 @@ HTTP handlers that provide debugging information.
     }
 
 
-<a id="org99e21fc"></a>
+<a id="orgca5022a"></a>
 
 ## Panic
 
@@ -1409,7 +1409,7 @@ HTTP handlers that provide debugging information.
     }
 
 
-<a id="orgf3c3c3c"></a>
+<a id="org7329a72"></a>
 
 ## Recover
 
@@ -1484,19 +1484,19 @@ want to display only the original value, you can write a little more code to
 filter unexpected problems and re-panic with the original error.
 
 
-<a id="orgdefac4e"></a>
+<a id="orga54f526"></a>
 
 # A Web Server
 
 -> src @[awebserver/server.go](src/awebserver/server.go)
 
 
-<a id="org575871f"></a>
+<a id="org8e64fd0"></a>
 
 # Go Docs
 
 
-<a id="orgb0fa0a9"></a>
+<a id="orgd478267"></a>
 
 # References     :W:
 

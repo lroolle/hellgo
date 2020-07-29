@@ -167,6 +167,7 @@ d, err := f.Stat()
 ** For
 
 - Three forms
+
 #+BEGIN_SRC go :exports both
 // Like a C for
 for init; condition; post { }
@@ -181,6 +182,7 @@ for { }
 #+RESULTS:
 
 - For range
+ 
 #+BEGIN_SRC go :exports both
 for key := range m {
     if key.expired() {
@@ -193,6 +195,7 @@ for key := range m {
 #+RESULTS:
 
 - For ~String~: the range does more work for you
+
 #+BEGIN_SRC go :exports both
 import "fmt"
 
@@ -570,6 +573,8 @@ A slice is a descriptor of an array segment. It consists of
 
 
 [[attachment:_20200725_011025slice-struct.png]]
+
+[[./img/20200725_011025slice-struct.png]]
 
 Our variable s, created earlier by make([]byte, 5), is structured like this:
 
