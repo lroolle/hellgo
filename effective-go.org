@@ -386,7 +386,9 @@ func main() {
 
 * Data
 
-** Allocation with ~new~ -> [[file:golang-spec.org::*~make~ & ~new~][golang-spec: make & new]]
+** Allocation with ~new~
+
+-> @[[file:golang-spec.org][golang-spec: make & new]]
 
 built-in function that allocates memory, but unlike its namesakes in some other
 languages it does *not initialize the memory*, it only *zeros it*.
@@ -504,7 +506,7 @@ func main() {
 
 ** Slices
 
--> [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
+-> @[[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
 
 Slices hold references to an underlying array, and if you assign one slice to
 another, both refer to the same array.
@@ -1442,7 +1444,7 @@ filter unexpected problems and re-panic with the original error.
 
 * A Web Server
 
--> src @[[file:src/awebserver/server.go::func main() {][awebserver/server.go]]
+-> src @[[file:src/awebserver/server.go][awebserver/server.go]]
 
 
 * Go Docs
