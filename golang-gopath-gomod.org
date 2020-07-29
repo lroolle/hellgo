@@ -1,0 +1,449 @@
+#+TITLE: Golang Gopath Gomod
+
+* [[https://blog.golang.org/using-go-modules][Using Go Modules - The Go Blog]]
+
+#+begin_quote
+Go 1.11和1.12实现了对包管理的初步支持，Go的新依赖管理系统使依赖版本信息明确且易
+于管理
+#+end_quote
+
+- 原包管理方式
+  1. 在不使用额外的工具的情况下，Go 的依赖包需要手工下载；
+  2. 第三方包没有版本的概念，如果第三方包的作者做了不兼容升级，会让开发者很难受；
+  3. 协作开发时，需要统一各个开发成员本地 ~$GOPATH/src~ 下的依赖包；
+  4. 引用的包引用了已经转移的包，而作者没改的话，需要自己修改引用；
+  5. 第三方包和自己的包的源码都在 ~src~ 下，很混乱。对于混合技术栈的项目来说，目录的存放会有一些问题。
+
+- 新的包管理模式解决了以上问题
+
+  1. 自动下载依赖包；
+  2. 项目不必放在 ~GOPATH/src~ 内了；
+  3. 项目内会生成一个 ~go.mod~ 文件，列出包依赖；
+  4. 所以来的第三方包会准确的指定版本号；
+  5. 对于已经转移的包，可以用 ~replace~ 申明替换，不需要改代码；
+
+* Prerequisite 准备工作
+
+- 升级 golang 版本到 > 1.12
+- 添加环境变量 ~GO111MODULE~ 为 ~on~ 或者 ~auto~
+ 
+ #+BEGIN_SRC sh
+ GO111MODULE=auto
+ #+END_SRC
+
+* Create a New ~hello~ Module by Example
+
+-> Example dir @ [[file:src/gomod/hello/][Go Mod ~hello~ Example]]
+
+
+- Create a new, empty directory somewhere outside ~$GOPATH/src~, ~cd~ into that
+  directory, and then create a new source file, ~hello.go~:
+#+BEGIN_SRC go :exports both
+package hello
+
+func Hello() string {
+    return "Hello, world."
+}
+#+END_SRC
+- Create a test, ~hello_test.go~
+ 
+#+BEGIN_SRC go :exports both
+package hello
+
+import "testing"
+
+func TestHello(t *testing.T) {
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"Example 1", "Oh hawai, This is Hello Pkg."},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Hello(); got != tt.want {
+				t.Errorf("Hello() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+#+END_SRC
+
+#+BEGIN_SRC sh :exports both
+go test
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+PASS
+ok  	_/Users/eric/G/w/golangtour/src/gomod/hello	3.326s
+#+end_example
+
+The last line summarizes the overall package test. Because we are working
+outside $GOPATH and also outside any module, the go command knows no import path
+for the current directory and makes up a fake one based on the directory name:
+_/Users/eric/G/w/golangtour/src/gomod/hello.
+
+- Let's make the current directory the root of a module by using go mod init and
+  then try go test again:
+
+ #+BEGIN_SRC sh
+ go mod init lroolle.com/hello
+ #+END_SRC
+
+- Run test again:
+#+begin_example
+PASS
+ok      lroolle.com/hello       1.942s
+#+end_example
+
+- ~go.mod~ file
+
+#+BEGIN_SRC sh
+cat go.mod
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+module lroolle.com/hello
+
+go 1.14
+#+end_example
+
+- Add a dependency:
+#+BEGIN_SRC go :exports both
+// hello.go
+package hello
+
+import "rsc.io/quote"
+
+func Hello() string {
+    return quote.Hello()
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+// go test
+go: finding module for package rsc.io/quote
+go: downloading rsc.io/quote v1.5.2
+go: found rsc.io/quote in rsc.io/quote v1.5.2
+go: downloading rsc.io/sampler v1.3.0
+go: downloading golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
+--- FAIL: TestHello (0.00s)
+    --- FAIL: TestHello/Example_1 (0.00s)
+        hello_test.go:15: Hello() = Hello, world., want Oh hawai, This is Hello Pkg.
+FAIL
+exit status 1
+FAIL	lroolle.com/hello	1.402s
+
+Compilation exited abnormally with code 1 at Mon Jul 27 17:15:02
+#+end_example
+
+The go command resolves imports by using the specific dependency module versions
+listed in ~go.mod~. When it encounters an import of a package not provided by any
+module in ~go.mod~, the go command automatically looks up the module containing
+that package and adds it to go.mod, using the latest version. (“Latest” is
+defined as the latest tagged stable (non-prerelease) version, or else the latest
+tagged prerelease version, or else the latest untagged version.)
+
+- List current modules and dependencys
+
+#+begin_example
+// go list -m all
+lroolle.com/hello
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c // a [[https://golang.org/cmd/go/#hdr-Pseudo_versions][go - The Go Programming Language]]pseudo-version
+rsc.io/quote v1.5.2
+rsc.io/sampler v1.3.0
+#+end_example
+
+- ~go.sum~
+  go.sum containing the expected cryptographic hashes of the content of
+  specific module versions
+
+  The go command uses the go.sum file to ensure that future downloads of these
+  modules retrieve the same bits as the first download, to ensure the modules
+  your project depends on do not change unexpectedly, whether for malicious,
+  accidental, or other reasons. Both go.mod and go.sum should be checked into
+  version control.
+
+* Upgrading dependencies
+
+With Go modules, versions are referenced with semantic version tags. A semantic
+version has three parts: major, minor, and patch. For example, for v0.1.2, the
+major version is 0, the minor version is 1, and the patch version is 2. Let's
+walk through a couple minor version upgrades.
+
+- ~go help modules~
+
+- Try updgrade ~go get golang.org/x/text~
+
+#+BEGIN_EXAMPLE
+// $ go get golang.org/x/text
+go: finding golang.org/x/text v0.3.0
+go: downloading golang.org/x/text v0.3.0
+go: extracting golang.org/x/text v0.3.0
+#+END_EXAMPLE
+
+- Try upgrading the rsc.io/sampler minor version.
+#+BEGIN_EXAMPLE
+// go get rsc.io/sampler                                                                              [17:31:47]
+go: rsc.io/sampler upgrade => v1.99.99
+go: downloading rsc.io/sampler v1.99.99
+#+END_EXAMPLE
+
+#+BEGIN_EXAMPLE
+go test                                                                                            [17:34:55]
+--- FAIL: TestHello (0.00s)
+    --- FAIL: TestHello/Example_1 (0.00s)
+        hello_test.go:15: Hello() = 99 bottles of beer on the wall, 99 bottles of beer, ..., want Oh hawai, This is Hello Pkg.
+FAIL
+exit status 1
+FAIL    lroolle.com/hello       1.901s
+#+END_EXAMPLE
+
+- List version
+#+BEGIN_EXAMPLE
+$ go list -m -versions rsc.io/sampler                                                                [17:34:59]
+rsc.io/sampler v1.0.0 v1.2.0 v1.2.1 v1.3.0 v1.3.1 v1.99.99
+#+END_EXAMPLE
+
+- Get specific version the pkg is located in: ~go/pkg/mod/~
+#+BEGIN_EXAMPLE
+$ go get rsc.io/sampler@v1.3.1  # default is @latest                                                                   [17:35:24]
+go: downloading rsc.io/sampler v1.3.1
+#+END_EXAMPLE
+
+* Adding a dependency on a new major version
+
+Let's add a new function to our package: func Proverb returns a Go concurrency
+proverb, by calling quote.Concurrency, which is provided by the module
+rsc.io/quote/v3. First we update hello.go to add the new function:
+
+#+BEGIN_SRC go :exports both
+package hello
+
+import (
+    "rsc.io/quote"
+    quoteV3 "rsc.io/quote/v3"
+)
+
+func Hello() string {
+    return quote.Hello()
+}
+
+func Proverb() string {
+    return quoteV3.Concurrency()
+}
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+$ go list -m rsc.io/q...                                                                             [17:38:23]
+rsc.io/quote v1.5.2
+rsc.io/quote/v3 v3.1.0
+#+END_EXAMPLE
+
+* Removing unused dependencies
+
+#+BEGIN_SRC sh
+go list -m all
+go mod tidy
+#+END_SRC
+
+* Conclusion
+
+Go modules are the future of dependency management in Go. Module functionality
+is now available in all supported Go versions (that is, in Go 1.11 and Go 1.12).
+
+This post introduced these workflows using Go modules:
+
+1. ~go mod init~ creates a new module, initializing the go.mod file that describes it.
+2. ~go build~, ~go test~, and other package-building commands add new dependencies to go.mod as needed.
+3. ~go list -m all~ prints the current module’s dependencies.
+4. ~go get~ changes the required version of a dependency (or adds a new dependency).
+5. ~go mod tidy~ removes unused dependencies.
+
+We encourage you to start using modules in your local development and to add
+go.mod and go.sum files to your projects. To provide feedback and help shape the
+future of dependency management in Go, please send us bug reports or experience
+reports.
+
+* [[https://blog.golang.org/publishing-go-modules][Publishing Go Modules - The Go Blog]]
+
+** Semantic Version
+
+A semantic version has the form vMAJOR.MINOR.PATCH.
+
+- Increment the MAJOR version when you make a backwards incompatible change to
+  the public API of your module. This should only be done when absolutely
+  necessary.
+- Increment the MINOR version when you make a backwards compatible change to the
+  API, like changing dependencies or adding a new function, method, struct field,
+  or type.
+- Increment the PATCH version after making minor changes that don't affect your
+  module's public API or dependencies, like fixing a bug.
+
+** Publish
+
+$ go mod tidy
+$ go test ./... ok example.com/hello 0.015s
+$ git add go.mod go.sum hello.go hello_test.go
+$ git commit -m "hello: changes for v0.1.0"
+$ git tag v0.1.0
+$ git push origin v0.1.0 $
+
+** Conclusion
+
+This post walked through the process of tagging a module with semantic versions and when to release v1. A future post will cover how to maintain and publish modules at v2 and beyond.
+
+* Questions
+
+** ~go mod init~ already exists: rm go.mod
+** Github private repo access? [[https://dev.to/alextrending/how-to-use-your-private-go-lib-in-github-actions-4lh9][How to use your private Go lib in Github Actions - DEV]]
+** 可以把项目放在$GOPATH/src下吗？
+可以。 但是go会根据GO111MODULE的值而采取不同的处理方式 默认情况下，GO111MODULE=auto 自动模式
+
+- ~auto~ 自动模式下，项目在$GOPATH/src里会使用$GOPATH/src的依赖包，在$GOPATH/src外，就使用go.mod 里 require的包
+- ~on~ 开启模式，1.12后，无论在$GOPATH/src里还是在外面，都会使用go.mod 里 require的包
+- ~off~ 关闭模式，就是老规矩。
+
+** 项目 Package 变更如何处理？(Replace package)
+
+go.mod
+
+#+BEGIN_SRC go :exports both
+replace golang.org/x/text => github.com/golang/text latest
+#+END_SRC
+
+** Package Name 与 Directory Name 的关系？
+
+-> Go blog: [[https://blog.golang.org/package-names][@Package names - The Go Blog]]
+-> Also in effective go:  @[[file:effective-go.org::*Names][Names]]
+
+*** Package paths
+
+A Go package has both a name and a path. The package name is specified in the
+package statement of its source files; client code uses it as the prefix for the
+package's exported names. Client code uses the package path when importing the
+package. *By convention, the last element of the package path is the package name*
+
+#+BEGIN_SRC go :exports both
+import (
+    "context"                // package context
+    "fmt"                    // package fmt
+    "golang.org/x/time/rate" // package rate
+    "os/exec"                // package exec
+)
+#+END_SRC
+
+*** Directories
+
+The standard library uses directories like crypto, container, encoding, and
+image to group packages for related protocols and algorithms. There is no actual
+relationship among the packages in one of these directories; a directory just
+provides a way *to arrange the files*. Any package can import any other package
+provided the import does not create a cycle.
+
+Just as types in different packages can have the same name without ambiguity,
+*packages in different directories can have the same name*. For example,
+runtime/pprof provides profiling data in the format expected by the pprof
+profiling tool, while net/http/pprof provides HTTP endpoints to present
+profiling data in this format. Client code uses the package path to import the
+package, so there is no confusion. If a source file needs to import both pprof
+packages, it can rename one or both locally. When renaming an imported package,
+the local name should follow the same guidelines as package names (lower case,
+no under_scores or mixedCaps).
+
+** 同一目录下能否同时包含多个 Package ?
+-> @[[https://stackoverflow.com/questions/20427890/does-it-make-sense-to-have-two-packages-in-the-same-directory][go - Does it make sense to have two packages in the same directory? - Stack O...]]
+
+*No*, except for unit tests.
+
+For example, the main package inside substring, should not in dir ~substring/~
+#+BEGIN_EXAMPLE
+..
+├── add
+│   ├── add.go                    // pacakge add
+│   └── add_test.go               // pacakge add_test
+└── substring
+    ├── cpu.out
+    ├── longestsubstring.go       // package substring
+    ├── longestsubstring_test.go  // package substring_test
+    ├── main
+    │   └── main.go               //  package main
+    └── substring.test
+#+END_EXAMPLE
+
+** Test 文件使用什么 Pakcage Name?
+-> @[[https://stackoverflow.com/questions/19998250/proper-package-naming-for-testing-with-the-go-language][Proper package naming for testing with the Go language - Stack Overflow]]
+
+The decision to use package myfunc or package myfunc_test in the test file
+depends on whether you want to perform ~white-box~ or ~black-box~ testing.
+
+There's nothing wrong with using both methods in a project. For instance, you
+could have ~myfunc_whitebox_test.go~ and ~myfunx_blackbox_test.go~.
+
+- ~Black-box Testing~: Use package myfunc_test, which will ensure you're only
+  using the exported identifiers.
+
+- ~White-box Testing~: Use package myfunc so that you have access to the
+  non-exported identifiers. Good for unit tests that require access to
+  non-exported variables, functions, and methods.
+
+NOTE: that the ~substring_test~ package imports.
+
+#+BEGIN_SRC go :exports both
+package substring_test
+
+import (
+	"testing"
+
+	"github.com/lroolle/deepdivego/testing/substring"
+)
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+package add_test
+
+import (
+	"testing"
+
+	. "github.com/lroolle/deepdivego/testing/add"
+)
+#+END_SRC
+
+Or you can use dot notation(/Which is not recommended by Go Team/)
+And NOTE: the dot notation also *Does not import non-exported*.
+
+-> More about ~import .~ @[[https://github.com/golang/go/wiki/CodeReviewComments#import-dot][CodeReviewComments · golang/go Wiki#import-dot]]
+
+The import . form can be useful in tests that, due to circular dependencies,
+cannot be made part of the package being tested:
+
+#+BEGIN_SRC go :exports both
+package foo_test
+
+import (
+	"bar/testutil" // also imports "foo"
+	. "foo"
+)
+#+END_SRC
+
+In this case, the test file cannot be in package foo because it uses
+bar/testutil, which imports foo. So we use the 'import .' form to let the file
+pretend to be part of package foo even though it is not.
+*Except for this one case, do not use ~import .~* in your programs.
+It makes the programs much harder to read because it is unclear whether a name
+like Quux is a top-level identifier in the current package or in an imported package.
+
+
+
+
+* References
+
+- [[https://juejin.im/post/5c9c8c4fe51d450bc9547ba1][拜拜了，GOPATH君！新版本Golang的包管理入门教程 - 掘金]]
+- [[https://blog.golang.org/using-go-modules][Using Go Modules - The Go Blog]]
+- [[https://blog.golang.org/publishing-go-modules][Publishing Go Modules - The Go Blog]]
+- [[https://golang.org/doc/code.html#PackagePaths][How to Write Go Code - The Go Programming Language]]
+- [[https://github.com/golang/go/wiki][Home · golang/go Wiki · GitHub]]
+- [[https://github.com/golang/go/wiki/CodeReviewComments#go-code-review-comments][CodeReviewComments · golang/go Wiki · GitHub]]

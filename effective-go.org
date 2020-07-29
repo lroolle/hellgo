@@ -73,16 +73,16 @@ If the package is simple, the package comment can be brief.
 
 ** Package Names
 
-- the package name should be good: *short*, *concise*, *evocative*. packages are
-- given lower case, single-word names; there should be no need for underscores
-  or mixedCaps
-- package name is the base name of its source directory; the package in
+- the package name should be good: *short*, *concise*, *evocative*.
+- packages are given lower case, single-word names; there should be no need for
+  underscores or mixedCaps
+- package name *is the base name of its source directory*; the package in
   src/encoding/base64 is imported as "encoding/base64" but has name base64, not
   encoding_base64 and not encodingBase64.
 - the buffered reader type in the bufio package is called Reader, not BufReader,
   because users see it as bufio.Reader, Reader does not conflict with io.Reader
 - once.Do; once.Do(setup) reads well and would not be improved by writing once.DoOrWaitUntilDone(setup).
-- ring.New.(not NewRing)
+  ring.New.(not NewRing)
 
 *Use the package structure to help you choose good names.*
 
@@ -99,13 +99,11 @@ if owner != user {
 }
 #+END_SRC
 
-#+RESULTS:
-
 ** Interface names
 
 - By convention, one-method interfaces are named by the method name plus an ~-er~
-suffix or similar modification to construct an agent noun: =Reader=, =Writer=,
-=Formatter=, =CloseNotifier= etc.
+  suffix or similar modification to construct an agent noun: =Reader=, =Writer=,
+  =Formatter=, =CloseNotifier= etc.
 - call your string-converter method String not ToString
 
 ** MixedCaps
@@ -1288,9 +1286,171 @@ type ReadWriter struct {
 
 - *Do not communicate by sharing memory; instead, share memory by Dcommunicatingd.*
 
+* Errors
+** By convention
 
-* References
+- Build-in Error interfce
+
+#+BEGIN_SRC go :exports both
+type error interface {
+    Error() string
+}
+#+END_SRC
+
+- A library writer is free to implement this interface
+
+#+BEGIN_SRC go :exports both
+// PathError records an error and the operation and
+// file path that caused it.
+type PathError struct {
+    Op string    // "open", "unlink", etc.
+    Path string  // The associated file.
+    Err error    // Returned by the system call.
+}
+
+func (e *PathError) Error() string {
+    return e.Op + " " + e.Path + ": " + e.Err.Error()
+}
+#+END_SRC
+
+- Type assertion
+
+#+BEGIN_SRC go :exports both
+for try := 0; try < 2; try++ {
+    file, err = os.Create(filename)
+    if err == nil {
+        return
+    }
+    if e, ok := err.(*os.PathError); ok && e.Err == syscall.ENOSPC {
+        deleteTempFiles()  // Recover some space.
+        continue
+    }
+    return
+}
+#+END_SRC
+** Panic
+
+- If the error is unrecoverable?(Something impossible has happened)
+
+#+BEGIN_SRC go :exports both
+// A toy implementation of cube root using Newton's method.
+func CubeRoot(x float64) float64 {
+    z := x/3   // Arbitrary initial value
+    for i := 0; i < 1e6; i++ {
+        prevz := z
+        z -= (z*z*z-x) / (3*z*z)
+        if veryClose(z, prevz) {
+            return z
+        }
+    }
+    // A million iterations has not converged; something is wrong.
+    panic(fmt.Sprintf("CubeRoot(%g) did not converge", x))
+}
+#+END_SRC
+
+- During initialization: if the library truly cannot set itself up, it might be
+  reasonable to panic, so to speak.
+
+#+BEGIN_SRC go :exports both
+var user = os.Getenv("USER")
+
+func init() {
+    if user == "" {
+        panic("no value for $USER")
+    }
+}
+#+END_SRC
+
+** Recover
+
+- Shut down a failing goroutine inside a server without killing the other
+  executing goroutines.
+
+#+BEGIN_SRC go :exports both
+func server(workChan <-chan *Work) {
+    for work := range workChan {
+        go safelyDo(work)
+    }
+}
+
+func safelyDo(work *Work) {
+    defer func() {
+        if err := recover(); err != nil {
+            log.Println("work failed:", err)
+        }
+    }()
+    do(work)
+}
+#+END_SRC
+#+begin_quote
+In this example, if do(work) panics, the result will be logged and the goroutine
+will exit cleanly without disturbing the others. There's no need to do anything
+else in the deferred closure; calling recover handles the condition completely.
+#+end_quote
+
+- Reports parsing errors by calling panic with a local error type.
+#+begin_quote
+The definition of Error, an error method, and the Compile function.
+#+end_quote
+#+BEGIN_SRC go :exports both
+// Error is the type of a parse error; it satisfies the error interface.
+type Error string
+func (e Error) Error() string {
+    return string(e)
+}
+
+// error is a method of *Regexp that reports parsing errors by panicking with an Error.
+func (regexp *Regexp) error(err string) {
+    panic(Error(err))
+}
+
+// Compile returns a parsed representation of the regular expression.
+func Compile(str string) (regexp *Regexp, err error) {
+    regexp = new(Regexp)
+    // doParse will panic if there is a parse error.
+    defer func() {
+        if e := recover(); e != nil {
+            regexp = nil    // Clear return value.
+            err = e.(Error) // Will re-panic if not a parse error.
+        }
+    }()
+    return regexp.doParse(str), nil
+}
+#+END_SRC
+
+With error handling in place, the error method (because it's a method bound to a
+type, it's fine, even natural, for it to have the same name as the builtin error
+type) makes it easy to report parse errors without worrying about unwinding the
+parse stack by hand:
+
+#+BEGIN_SRC go :exports both
+if pos == 0 {
+    re.error("'*' illegal at start of expression")
+}
+#+END_SRC
+
+Useful though this pattern is, it should be used only within a package. Parse
+turns its internal panic calls into error values; it does not expose panics to
+its client. That is a good rule to follow.
+
+By the way, this re-panic idiom changes the panic value if an actual error
+occurs. However, both the original and new failures will be presented in the
+crash report, so the root cause of the problem will still be visible. Thus this
+simple re-panic approach is usually sufficient—it's a crash after all—but if you
+want to display only the original value, you can write a little more code to
+filter unexpected problems and re-panic with the original error.
+
+* A Web Server
+
+-> src @[[file:src/awebserver/server.go::func main() {][awebserver/server.go]]
+
+
+* Go Docs
+
+* References :W:
 
 - Golang Doc: [[https://golang.org/doc/effective_go.html#introduction][Effective Go]]
 - [[https://golang.org/src/][Golang Src]]
 - [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
+- [[https://medium.com/@shazow/code-boilerplate-is-it-always-bad-934827efcfc7][Code boilerplate: Is it always bad? | by Andrey Petrov | Medium]]
+- [[https://medium.com/@elliotchance/godoc-tips-tricks-cda6571549b][godoc: Tips & Tricks. Go has a great emphasis on simple… | by Elliot Chance |...]]

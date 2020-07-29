@@ -41,7 +41,6 @@
 
 - 分布式爬虫：相亲网站资料
 
-
 * Chapter 02: Basic Grammar 基本语法
 :PROPERTIES:
 :DIR:      img/
@@ -368,13 +367,1055 @@ func swap(a, b int) (int, int){
 }
 #+END_SRC
 
-
-* Chapter 03: 内建容器
+* Chapter 03: Container 内建容器
 :PROPERTIES:
 :DIR:      img/
 :END:
 
-** 数组
-** 切片
+** Array 数组
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	var a [5]int
+	a2 := [3]int{1, 2, 3}
+	a3 := [...]int{1, 2, 3}
+	a4 := [3][3]int{}
+	fmt.Println(a, a3, a4)
+
+	for i, v := range a2 {
+		fmt.Println(i, v)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: [0 0 0 0 0] [1 2 3] [[0 0 0] [0 0 0] [0 0 0]]
+: 0 1
+: 1 2
+: 2 3
+
+- func 拷贝
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func printA(a [3]int) {
+	fmt.Println("Arrary in func: make a copy and dont modify")
+	a[2] = 1000000
+	for i, v := range a {
+		fmt.Println(i, v)
+	}
+}
+
+func pprintA(a *[3]int) {
+	fmt.Println("Pointer Arrary in func: make modify")
+	(*a)[2] = 1000000
+	for i, v := range (*a) {
+		fmt.Println(i, v)
+	}
+
+}
+
+func main() {
+	var a = [3]int{1, 2, 3}
+	printA(a)
+	fmt.Println(a)
+	pprintA(&a)
+	fmt.Println(a)
+}
+
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Arrary in func: make a copy and dont modify
+0 1
+1 2
+2 1000000
+[1 2 3]
+Pointer Arrary in func: make modify
+0 1
+1 2
+2 1000000
+[1 2 1000000]
+#+end_example
+
+** Slice 切片 :ATTACH:
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func printS(s []int) {
+	s[1] = 10000000
+	fmt.Println("Within printS, s=", s)
+}
+
+func main() {
+	a := [...]int{0, 1, 2, 3, 4, 5, 6}
+	fmt.Println("a[2:6]=", a[2:6])
+	fmt.Println(" a[:6]=", a[:6])
+	fmt.Println(" a[2:]=", a[2:])
+	fmt.Println("  a[:]=", a[:])
+	printS(a[:])
+	fmt.Println("printS modified array, a=", a)
+
+	// Reslice
+	var ss = a[:]
+	var sss = ss[3:]
+	fmt.Println("Reslice, sss=ss[3:], ", ss, sss)
+}
+#+END_SRC
+
+- Extending Slice
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	var a = [...]int{0, 1, 2, 3, 4, 5, 6, 7}
+	s1 := a[2:6]
+	s2 := s1[3:5]
+	fmt.Println("Slice extended according to a, ", "s1=", s1, "s2=", s2)
+	fmt.Printf("Slice len(s1)=%d, cap(s1)=%d\n", len(s1), cap(s1))
+	fmt.Printf("Slice len(s2)=%d, cap(s2)=%d\n", len(s2), cap(s2))
+	s2 = append(s2, 7, 8, 9, 10, 11)
+	fmt.Println("Allocate new array to slice append", s2)
+}
+#+END_SRC
+
+#+RESULTS:
+: Slice extended according to a,  s1= [2 3 4 5] s2= [5 6]
+: Slice len(s1)=4, cap(s1)=6
+: Slice len(s2)=2, cap(s2)=3
+: Allocate new array to slice append [5 6 7 8 9 10 11]
+
+
+[[attachment:_20200726_151241screenshot.png]]
+
+- Slice 的实现
+ 
+[[attachment:_20200726_152019screenshot.png]]
+
+- Slice 可以向后扩展，不可以向前扩展
+- Slice s[i] < len(s), cap(s)
+ 
+- Slice Operations:
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	var s []int
+	fmt.Printf("Zero value slice is nil       : s=%#v, len(s)=%d, cap(s)=%d\n", s, len(s), cap(s))
+	var emptys = make([]int, 0)
+	fmt.Printf("Empty slice pointer is not nil: s=%#v,    len(s)=%d, cap(s)=%d\n", emptys, len(emptys), cap(emptys))
+}
+#+END_SRC
+
+#+RESULTS:
+: Zero value slice is nil       : s=[]int(nil), len(s)=0, cap(s)=0
+: Empty slice pointer is not nil: s=[]int{},    len(s)=0, cap(s)=0
+
 ** Map
-** 字符串处理
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func main() {
+	m := map[string]string { "name": "go" }
+	// m := make(map[string]int)
+	mm := map[string]map[string]string { }
+	fmt.Printf("m: %#v mm: %#v\n", m, mm)
+}
+#+END_SRC
+
+#+RESULTS:
+: m: map[string]string{"name":"go"} mm: map[string]map[string]string{}
+
+- map keys
+  - hashtable 必须可以比较相等
+  - 除了 slice/map/func, 基本所有内建类型都可以作为 Key, Struct 可以
+
+** [[https://leetcode.com/problems/longest-substring-without-repeating-characters/][Leetcode: longest substring without repeating]]
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func lengthOfLongestSubstring(s string) int {
+	var longest int
+	var start int
+	var m = make(map[rune]int)
+
+	for i, ch := range []rune(s) {
+		if last, ok := m[ch]; ok && last >= start {
+			start = m[ch] + 1
+		}
+		if i - start + 1 > longest {
+			longest = i - start + 1
+		}
+		m[ch] = i
+	}
+	return longest
+}
+func main() {
+	fmt.Println(lengthOfLongestSubstring("abcabcbb"))
+	fmt.Println(lengthOfLongestSubstring("bbbbbb"))
+	fmt.Println(lengthOfLongestSubstring("pwwkew"))
+	fmt.Println(lengthOfLongestSubstring(""))
+	fmt.Println(lengthOfLongestSubstring("ab"))
+	fmt.Println(lengthOfLongestSubstring("  "))
+	fmt.Println(lengthOfLongestSubstring("我是谁谁是我"))
+	fmt.Println(lengthOfLongestSubstring("西瓜皮阿西吧"))
+}
+#+END_SRC
+
+#+RESULTS:
+: 3
+: 1
+: 3
+: 0
+: 2
+: 1
+: 3
+: 5
+
+** String Rune 字符串处理
+
+#+BEGIN_SRC go :exports both
+import (
+	"fmt"
+	"unicode/utf8"
+)
+func main() {
+	var s = "aB字符串"
+	fmt.Println("len(s) =", len(s))
+
+	for _, b := range []byte(s) {
+		fmt.Printf("%X ", b)
+	}
+	fmt.Println("// UTF-8 Encode")
+
+	for i, ch := range s {
+		fmt.Printf("Ch is a rune, i=%d, ch=%c\n", i, ch)
+	}
+	fmt.Println("RuneCount len(s) = ", utf8.RuneCountInString(s))
+
+	for i, ch := range []rune(s){
+		fmt.Printf("Ch is a rune, i=%d, ch=%c\n", i, ch)
+	}
+ }
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+len(s) = 11
+61 42 E5 AD 97 E7 AC A6 E4 B8 B2 // UTF-8 Encode
+Ch is a rune, i=0, ch=a
+Ch is a rune, i=1, ch=B
+Ch is a rune, i=2, ch=字
+Ch is a rune, i=5, ch=符
+Ch is a rune, i=8, ch=串
+RuneCount len(s) =  5
+Ch is a rune, i=0, ch=a
+Ch is a rune, i=1, ch=B
+Ch is a rune, i=2, ch=字
+Ch is a rune, i=3, ch=符
+Ch is a rune, i=4, ch=串
+#+end_example
+
+- [[https://golang.org/pkg/strings/][strings - The Go Programming Language]]
+
+  notes @[[file:src/strings/strings.org][strings.org]]
+
+* Chapter 04: Struct 面向“对象”
+
+** Strut Method 结构体和方法 :ATTENTION:
+
+- Go 仅支持封装，不支持继承和多态
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type point struct {i, j int}
+
+type treeNode struct {
+	value int
+	left, right *treeNode
+}
+
+func createTreeNode(value int) *treeNode {
+	// ATTENTION: 返回的是局部变量地址
+	// CPP 局部变量分配在栈上，Golang 不需要知道，编译器决定垃圾回收
+	return &treeNode{value: value}
+}
+
+
+func main() {
+	var root treeNode
+	root = treeNode{value: 3}
+	root.left = &treeNode{}
+	root.right = &treeNode{5, nil, nil}
+	root.right.left = new(treeNode)
+	root.right.right = createTreeNode(7)
+
+	nodes := []treeNode {
+		{value: 3},
+		{},
+		{6, nil, &root},
+	}
+	fmt.Println(nodes)
+}
+#+END_SRC
+
+#+RESULTS:
+: [{3 <nil> <nil>} {0 <nil> <nil>} {6 <nil> 0xc00000c060}]
+
+- Struct Method 方法
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type treeNode struct {
+	value int
+	left, right *treeNode
+}
+
+func (node treeNode) print(){
+	fmt.Print(node.value, " ")
+}
+
+func (node *treeNode) setValue(value int) {
+	// :ATTENTION: 使用指针才能改变内部值
+	node.value = value
+}
+
+func (node *treeNode) traverse() {
+	if node == nil {
+    	return
+	}
+	node.left.traverse()
+	node.print()
+	node.right.traverse()
+}
+
+func main() {
+	root := treeNode{value: 3}
+	root.left = &treeNode{value: 5}
+	root.right = &treeNode{6, nil, nil}
+	root.right.left = new(treeNode)
+	root.right.right = &treeNode{value: 7}
+
+	root.print()
+	root.setValue(4)
+	fmt.Println()
+	root.traverse()
+}
+#+END_SRC
+
+#+RESULTS:
+: 3
+: 5 4 0 6 7
+
+- 值接收者 vs 指针接收者
+  - 要改变内容必须使用指针；
+  - 结构过大也考虑使用指针接收者；
+  - 考虑一致性，如有指针接收者，最好都是指针接收者；
+
+- 值接收者为 golang 特有的，其他语言 self/this 都是指针
+
+** 封装
+
+- 变量名：CamelCase
+- 首字母大写：Public
+- 首字母小写：private
+- 包：
+  - 每个目录一个包
+  - main 包包含入口，每个目录只能有一个 main
+  - 为结构定义的方法必须在同一个包里
+  - 可以是不同文件
+- Struct 名字不需要重复 package 名字，如 ~tree.TreeNode~ 可以叫 ~tree.Node~
+
+** 扩展
+
+- 组合
+
+#+BEGIN_SRC go :exports both
+
+type myNode struct {
+	node *tree.Node
+}
+
+func (node *myNode) postOrder() {
+	if node == nil || node.node == nil{
+        return
+	}
+	left := myNode{node.node.left}
+	right:= myNode{node.node.right}
+	left.postOrder()
+	right.postOrder()
+	node.node.print()
+}
+
+#+END_SRC
+
+- 别名
+
+#+BEGIN_SRC go :exports both
+// package queue
+
+import "fmt"
+
+type Queue []int
+
+func (q *Queue) Push(v int) {
+	,*q = append(*q, v)
+}
+
+func (q *Queue) Pop() int {
+	if len(*q) == 0 {
+		return nil
+	}
+	head := (*q)[len(*q)-1]
+	,*q = (*q)[:len(*q)-1]
+	return head
+}
+
+func main() {
+	q := Queue{1}
+	q.Push(2)
+	q.Push(3)
+	fmt.Println("Poped: ", q.Pop())
+	fmt.Println(q)
+	q.Push(3)
+	fmt.Println("Poped: ", q.Pop())
+	fmt.Println("Poped: ", q.Pop())
+	fmt.Println("Poped: ", q.Pop())
+	fmt.Println(q)
+}
+
+#+END_SRC
+
+#+RESULTS:
+: Poped:  3
+: [1 2]
+: Poped:  3
+: Poped:  2
+: Poped:  1
+: []
+** GOPATH
+
+-> More @ [[file:golang-gopath-gomod.org][go-mod-init]]
+
+- 默认在 ~/go;
+- 官方推荐都放在同一个 GOPATH;
+- 可以同时放在不同目录下;
+
+
+* Chapter 05: Interface 面向“接口”
+
+** Duck typing 的概念
+
+- Python 中的 Duck typing
+#+BEGIN_SRC python :exports both
+def download(retriever):
+    return retriever.get("golang.org")
+#+END_SRC
+
+- CPP 中的 Duck typing
+#+BEGIN_SRC cpp
+template <class R>
+
+string download(const R& retriever) {
+  return retriever.get("python.org")
+}
+#+END_SRC
+
+- JAVA 中的类似代码
+#+BEGIN_SRC java
+<R extends Retriever>
+String download(R r) {
+    return r.get("golang.org")
+}
+#+END_SRC
+
+** 接口的定义和实现
+- golang 的 Duck typing
+  - 由 *使用者* 定义
+-> src @[[file:src/deepdivego/interface/][Chapter05: Interface Src]]
+#+BEGIN_SRC go :exports both
+
+type Retriever interface {
+	Get(url string) string
+}
+
+func download(r Retriever) string {
+	return r.Get("golang.org")
+}
+func main() {
+	var r Retriever
+	r = mock.Retriever{"This is mock golang.org"}
+	fmt.Println(download(r))
+}
+#+END_SRC
+
+#+BEGIN_SRC go :exports both
+package mock
+
+type Retriever struct {
+	Contents string
+}
+
+func (r Retriever) Get(url string) string {
+	return r.Contents
+}
+#+END_SRC
+
+** 接口的值类型
+
+#+BEGIN_EXAMPLE
+// go run main.go
+Type mockr: mock.Retriever {This is mock golang.org}
+Type realr: real.Retriever {Mozilla/5.0 1m0s}
+
+// Change to pointer
+Type realr: *real.Retriever &{Mozilla/5.0 1m0s}
+#+END_EXAMPLE
+
+#+BEGIN_SRC go :exports both
+func (r *Retriever) Get(url string) string
+#+END_SRC
+
+- 怎么获取接口值类型？
+  -> src @[[file:src/deepdivego/interface/main.go][main.go]]
+ 
+  - Switch
+ #+BEGIN_SRC go :exports both
+ func inspect(r Retriever) {
+     switch v := r.(type) {
+     case mock.Retriever:
+         fmt.Println("Inspect Contents: ", v.Contents)
+     case *real.Retriever:
+         fmt.Println("Inspect UserAgent: ", v.UserAgent)
+     }
+ }
+ #+END_SRC
+
+  - Type assertion
+#+BEGIN_SRC go :exports both
+if _, ok := r.(mock.Retriever); ok {
+    fmt.Println("Type assertion: this is mock")
+} else {
+    fmt.Println("Type assertion: this is real")
+}
+#+END_SRC
+
+- 表示任何类型： ~interface{}~
+  -> src @[[file:src/deepdivego/interface/queue/queue.go][queue.go]]
+#+BEGIN_SRC go :exports both
+package queue
+
+type Queue []interface{}
+
+func (q *Queue) Push(v interface{}) {
+	*q = append(*q, v)
+}
+
+func (q *Queue) Pop() interface{} {
+	head := (*q)[len(*q)-1]
+	*q = (*q)[:len(*q)-1]
+	return head
+}
+
+func (q *Queue) Empty() bool {
+	return len(*q) == 0
+}
+#+END_SRC
+
+** 接口的组合
+#+BEGIN_SRC go :exports both
+type RetrieverPoster interface {
+	Retriever
+	Poster
+}
+
+func session(s RetrieverPoster) string {
+	s.Post(url, map[string]string{"contents": "golangtour"})
+	return s.Get(url)
+}
+#+END_SRC
+
+** 常用的系统接口
+
+- Reader and Writer
+
+  -> src @[[file:src/deepdivego/interface/main.go][Reader]]
+  -> pkg src @[[file:/usr/local/Cellar/go/1.14.3/libexec/src/io/io.go::type Reader interface {][io.Reader]]
+
+#+BEGIN_SRC go :exports both
+func printFile(reader io.Reader) {
+	scanner := bufio.NewScanner(reader)
+
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+}
+func main() {
+	printFile(strings.NewReader(s))
+	file, err := os.Open("go.mod")
+	if err != nil {
+		panic(err)
+	}
+	printFile(bufio.NewReader(file))
+}
+#+END_SRC
+
+* Chapter 06: 函数式编程 & 闭包
+** 函数式编程 vs 函数指针
+
+- 函数为一等公民：参数，变量，返回值都可以是函数
+- 高阶函数：apply
+- 函数 -> 闭包
+
+** /正统/ 函数式编程（本课不严格规定）
+
+- 不可变性：不能有状态，只有常量和函数
+- 函数只能有一个参数
+
+** 闭包 :ATTACH:
+:PROPERTIES:
+:ID:       64192b32-6927-4624-9927-e1d26e72bed0
+:DIR:      img/
+:END:
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+func adder() func(int) int {
+	sum := 0
+	return func(v int) int {
+		sum += v
+		return sum
+	}
+}
+
+func main() {
+	a := adder()
+
+	for i := 0; i < 10; i++ {
+		fmt.Printf("0 + ... + %d = %d\n", i, a(i))
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+0 + ... + 0 = 0
+0 + ... + 1 = 1
+0 + ... + 2 = 3
+0 + ... + 3 = 6
+0 + ... + 4 = 10
+0 + ... + 5 = 15
+0 + ... + 6 = 21
+0 + ... + 7 = 28
+0 + ... + 8 = 36
+0 + ... + 9 = 45
+#+end_example
+
+- /正统/ 的写法
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type iAdder func(int) (int, iAdder)
+
+func adder2(base int) iAdder {
+	return func(v int) (int, iAdder){
+		return base + v, adder2(base + v)
+	}
+}
+
+func main() {
+	a := adder2(0)
+	for i := 0; i < 10; i++ {
+		var s int
+		s, a = a(i)
+		fmt.Printf("0 + ... + %d = %d\n", i, s)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+0 + ... + 0 = 0
+0 + ... + 1 = 1
+0 + ... + 2 = 3
+0 + ... + 3 = 6
+0 + ... + 4 = 10
+0 + ... + 5 = 15
+0 + ... + 6 = 21
+0 + ... + 7 = 28
+0 + ... + 8 = 36
+0 + ... + 9 = 45
+#+end_example
+
+[[attachment:_20200728_023353screenshot.png]]
+
+** 其他语言的闭包
+
+*** Python 的闭包
+- Python 原生支持闭包
+- 可以使用内建函数 ~__closure__~ 来查看闭包内容
+
+#+BEGIN_SRC python :exports both :results output
+def adder():
+    sum = 0
+    def f(value):
+        nonlocal sum
+        sum += value
+        return sum
+    return f
+
+a = adder()
+print(a.__closure__[0].cell_contents)
+for i in range(4):
+    print(a(i))
+))
+#+END_SRC
+
+#+RESULTS:
+: 0
+: 0
+: 1
+: 3
+: 6
+
+*** Cpp 中的闭包
+
+#+BEGIN_SRC cpp :exports both
+auto adder() {
+    auto sum = 0;
+    return [=] (int value) mutable {
+        sum += value;
+        return sum;
+    };
+}
+#+END_SRC
+
+*** Java 中的闭包
+
+#+BEGIN_SRC java :exports both
+Function<Integer, Integer> adder() {
+    final Holder<Integer> sum = new Holder<>(0);
+    return (Integer value) -> {
+        sum.value += value;
+        return sum.value
+    };
+}
+#+END_SRC
+
+** golang 闭包应用
+
+*** 斐波那契数列
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func fib() func() int {
+	a, b := 0, 1
+	return func() int {
+		a, b = b, a+b
+		return a
+	}
+}
+
+func main() {
+	f := fib()
+
+	for i := 0; i < 10; i++ {
+		fmt.Printf("%d ", f())
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: 1 1 2 3 5 8 13 21 34 55
+
+*** 为函数生成接口，包装成 ~io.Reader~
+
+- Go 语言函数是 *一等公民*
+
+#+BEGIN_SRC go :exports both
+import (
+	"io"
+	"bufio"
+	"fmt"
+	"strings"
+)
+
+func fib() func() int {
+	a, b := 0, 1
+	return func() int {
+		a, b = b, a+b
+		return a
+	}
+}
+
+type intGen func() int
+
+func (g intGen) Read(p []byte) (n int, err error) {
+	next := g()
+	if next > 1000 {
+		return 0, io.EOF
+	}
+	s := fmt.Sprintf("%d ", next)
+	// TODO: incorrect if p is too small
+	return strings.NewReader(s).Read(p)
+}
+
+func printFile(reader io.Reader) {
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
+}
+
+func main() {
+	var f intGen
+	f = fib()
+	printFile(f)
+}
+#+END_SRC
+
+*** 使用函数来遍历二叉树
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+type Node struct {
+	value       int
+	left, right *Node
+}
+
+func (node *Node) print() {
+	fmt.Print((*node).value, " ")
+}
+
+func (node *Node) setValue(value int) {
+	// :ATTENTION: 使用指针才能改变内部值
+	node.value = value
+}
+
+func (node *Node) traverse() {
+	if node == nil {
+		return
+	}
+	node.left.traverse()
+	node.print()
+	node.right.traverse()
+}
+
+func (node *Node) Traverse() {
+	node.TraverseFunc(func(n *Node) { n.print()})
+	fmt.Println()
+}
+
+func (node *Node) TraverseFunc(f func(*Node)) {
+	if node == nil {
+		return
+	}
+	node.left.TraverseFunc(f)
+	f(node)
+	node.right.TraverseFunc(f)
+}
+
+func main() {
+	root := Node{value: 3}
+	root.left = &Node{value: 5}
+	root.right = &Node{6, nil, nil}
+	root.right.left = new(Node)
+	root.right.right = &Node{value: 7}
+
+	root.setValue(4)
+	root.Traverse()
+
+	nodeCount := 0
+	root.TraverseFunc(func (node *Node) {
+		nodeCount++
+	})
+	fmt.Println(nodeCount)
+}
+#+END_SRC
+
+#+RESULTS:
+: 5 4 0 6 7
+: 5
+
+* Chapter 07: 错误处理和资源管理
+
+- 打开文件也要确保关闭；
+- 打开连接也要保证关闭；
+
+** ~defer~
+
+- defer 确保调用在函数结束时发生
+- 参数在 defer 语句时计算
+- defer 列表为先进后出 FILO
+
+#+BEGIN_SRC go :exports both
+import "fmt"
+
+func tryDefer() {
+	defer fmt.Println(1)
+	defer fmt.Println(2)
+	fmt.Println(3)
+	panic("error")
+	return
+	fmt.Println(4)
+}
+
+func main() {
+    tryDefer()
+}
+
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_EXAMPLE
+3
+2
+1
+panic: error
+
+goroutine 1 [running]:
+main.tryDefer()
+        /Users/eric/G/w/golangtour/src/deepdivego/errhandle/defer/defer.go:9 +0x15c
+main.main()
+        /Users/eric/G/w/golangtour/src/deepdivego/errhandle/defer/defer.go:16 +0x20
+exit status 2
+#+END_EXAMPLE
+
+- more -> @[[file:src/deepdivego/errhandle/fib/fib.go::func writeFile(filename string) {][WriteFib]]
+
+** 错误处理概念
+-> src @[[file:src/deepdivego/errhandle/fib/fib.go::func writeFile(filename string) {][WriteFib]]
+
+#+BEGIN_SRC go :exports both
+file, err := os.OpenFile(filename, os.O_EXCL|os.O_CREATE, 0666)
+if err != nil {
+    // panic(err)
+
+    if pathError, ok := err.(*os.PathError); !ok {
+        panic(err)
+    } else {
+        fmt.Printf("%s, %s, %s\n", pathError.Op, pathError.Path, pathError.Err)
+    }
+    // fmt.Println("Error", err)
+    return
+}
+#+END_SRC
+
+
+** 服务器统一出错管理1
+
+
+- 如何实现统一的错误处理方式？
+  -> src @[[file:src/deepdivego/errhandle/filelistserver/web.go::func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {][errWrapper]]
+
+
+
+** ~panic~ & ~recover~
+
+*** panic
+- 停止当前函数执行；
+- 一直向上返回，执行每一层 defer；
+- 如果没有遇见 Recover，程序退出；
+
+*** recover
+- 仅在 defer 调用中使用；
+- 获取 panic 的值；
+- 如果无法处理可以重新 panic;
+
+*** DONT Panic!
+
+** 服务器统一出错管理2
+
+-> src @[[file:src/deepdivego/errhandle/filelistserver/web.go::func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {][errWrapper]]
+
+** 总结
+
+- 意料之中的，尽量使用 error，如文件打不开；
+- 意料之外的，实在没办法的使用 panic，要尽量去避免；
+* Chapter 08: Debuging sucks & Testing rocks 测试及性能调优
+
+** 传统测试 vs 表格驱动测试
+
+
+*** 传统测试
+#+BEGIN_SRC java
+@Test public void testAdd(){
+    assertEqual(3, add(1, 2))
+    assertEqual(...)
+}
+#+END_SRC
+
+- 测试数据和测试逻辑混在一起
+- 出错信息不明确
+- 一旦一个数据出错，测试中断
+ 
+*** 表格驱动测试
+#+BEGIN_SRC go :exports both
+tests := []struct {
+	a, b, c int32
+}{
+	{1, 2, 3}
+	{0, 2, 2}
+	{0, 0, 0}
+	{math.MaxInt32, 1, math.MinInt32}
+}
+
+for _, test := range tests {
+	if actual := add(test.a, test.b); actual != test.c {
+	}
+}
+#+END_SRC
+
+- 分离的测试数据和测试逻辑
+- 明确的出错信息
+- 可以部分失败
+- golang 语法可以使我们更容易实践表格驱动测试
+
+
+** ~testing.T~: For test
+- src @[[file:src/deepdivego/testing][file:deepdivego/testing]]
+
+** ~testing.B~: For benchmark
+-> src @[[file:src/deepdivego/testing][file:deepdivego/testing]]
+
+- test bench
+
+#+BEGIN_SRC sh
+go test -bench .
+#+END_SRC
+
+- cpuprofile
+
+#+BEGIN_EXAMPLE
+go test -bench . -cpuprofile cpu.out
+goos: darwin
+goarch: amd64
+pkg: github.com/lroolle/deepdivego/testing/substring
+BenchmarkLongestSubstring-8      2000089               598 ns/op
+PASS
+ok      github.com/lroolle/deepdivego/testing/substring 2.988s
+#+END_EXAMPLE
+
+- go tool pprof cpu.out
+#+BEGIN_EXAMPLE
+go tool pprof cpu.out
+Type: cpu
+Time: Jul 29, 2020 at 4:51am (CST)
+Duration: 1.97s, Total samples = 1.65s (83.81%)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) web
+(pprof)
+#+END_EXAMPLE
