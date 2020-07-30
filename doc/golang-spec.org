@@ -1,5 +1,5 @@
 #+TITLE: The Go Programming Language Specification
-
+#+STARTUP: nofold
 
 
 * Keywords
@@ -499,7 +499,7 @@ Values of type SyncedBuffer are also ready to use immediately upon allocation or
 just declaration. In the next snippet, both p and v will work correctly without
 further arrangement.
 
--> [[file:src/sync.mutex/README.org][sync.Mutex]]
+-> [[file:../src/sync.mutex/README.org][sync.Mutex]]
 
 #+BEGIN_SRC go :exports both
 import (

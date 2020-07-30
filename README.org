@@ -1,1 +1,37 @@
 #+TITLE: Readme
+#+STARTUP: nofold
+
+#+begin_quote
+A tour around go.
+#+end_quote
+
+
+* Index
+
+- Basics & Specs
+  - [[file:doc/golang-spec.org][The Go Programming Language Specification(Go Blog)]]
+  - [[file:doc/effective-go.org][Effective Go(Go Blog)]]
+  - [[file:doc/gomod.org][Go Modules: ~go mod init~]]
+
+- Dive & Surf
+  - [[file:doc/deepdive-go.org][Ccmouse Golang Course: Deepdive Go]]
+  - [[file:doc/unicode-go.org][Unicode Go]]
+
+
+
+#+BEGIN_SRC license
+
+        DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+                    Version 2, December 2004
+
+ Copyright (C) 2020 Eric Wang<wrqatw@gmail.com>
+
+ Everyone is permitted to copy and distribute verbatim or modified
+ copies of this license document, and changing it is allowed as long
+ as the name is changed.
+
+            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+
+  0. You just DO WHAT THE FUCK YOU WANT TO.
+#+END_SRC

@@ -560,11 +560,9 @@ func main() {
 : [[78 111 119 32 105 115 32 116 104 101 32 116 105 109 101] [102 111 114 32 97 108 108 32 103 111 111 100 32 103 111 112 104 101 114 115] [116 111 32 98 114 105 110 103 32 115 111 109 101 32 102 117 110 32 116 111 32 116 104 101 32 112 97 114 116 121 46]]
 
 
-*** Slice internals ([[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]) :ATTACH:
-:PROPERTIES:
-:ID:       12f979d1-9b84-4d32-aa52-92921b535d51
-:DIR:      img/
-:END:
+*** Slice internals
+
+-> see Go Blog @[[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
 
 A slice is a descriptor of an array segment. It consists of
 - a pointer to the array
@@ -572,13 +570,11 @@ A slice is a descriptor of an array segment. It consists of
 - and its capacity (the maximum length of the segment).
 
 
-[[attachment:_20200725_011025slice-struct.png]]
-
-[[./img/_20200725_011025slice-struct.png]]
+[[../img/_20200725_011025slice-struct.png]]
 
 Our variable s, created earlier by make([]byte, 5), is structured like this:
 
-[[attachment:_20200725_011002slice-1.png]]
+[[../img/_20200725_011002slice-1.png]]
 
 
 #+BEGIN_SRC go :exports both
@@ -823,6 +819,9 @@ func Min(a ...int) int {
 }
 
 func main() {
+	var u8 uint8 = ^uint8(0) >> 1
+	var u16  uint16 = ^uint16(0) >> 1
+	fmt.Println(u8, u16)
 	fmt.Println(^uint(0)) // bitwise NOT
 	fmt.Println(^uint(0) >> 1)
 	fmt.Println(Min(2, 3, 4, 5))
@@ -830,9 +829,6 @@ func main() {
 #+END_SRC
 
 #+RESULTS:
-: 18446744073709551615
-: 9223372036854775807
-: 2
 
 ** Append
 
@@ -1449,14 +1445,16 @@ filter unexpected problems and re-panic with the original error.
 
 * A Web Server
 
--> src @[[file:src/awebserver/server.go][awebserver/server.go]]
+-> src @[[file:../src/awebserver/server.go][awebserver/server.go]]
 
 
 * Go Docs
 
+
+
 * References :W:
 
-- Golang Doc: [[https://golang.org/doc/effective_go.html#introduction][Effective Go]]
+- [[https://golang.org/doc/effective_go.html#introduction][Golang Blog: Effective Go]]
 - [[https://golang.org/src/][Golang Src]]
 - [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
 - [[https://medium.com/@shazow/code-boilerplate-is-it-always-bad-934827efcfc7][Code boilerplate: Is it always bad? | by Andrey Petrov | Medium]]

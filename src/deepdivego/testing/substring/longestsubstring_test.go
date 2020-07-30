@@ -19,6 +19,7 @@ func TestLongestSubstring(t *testing.T) {
 		{"中文", args{"我爱你你爱我"}, 3},
 		{"Edge", args{""}, 0},
 		{"Blank", args{" "}, 1},
+		{"Mixed", args{"\b5Ὂg̀9! ℃ᾭG"}, 11},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

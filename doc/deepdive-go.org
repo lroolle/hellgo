@@ -1,23 +1,27 @@
 #+TITLE: Golang Deepdive
 #+AUTHOR: Eric dive course by Ccmouse
+#+OPTIONS: toc:nil
 
-* Chapter 01: Index 概览
-
-** 基本语法
-
-- 变量
+* Chapter 00: Index 概览
+** [[file:../src/deepdivego][Source Code: deepdivego]]
+** [[*Chapter 01: Basic Grammar 基本语法][Chapter 01: Basic Grammar 基本语法]]
+- [[*Var 赋值][Var 赋值]]
+- [[*Base Types 内建变量类型][Base Types 内建变量类型]]
 - 选择
 - 循环
 - 指针
-- 数组
-- 容器
+
+** [[*Chapter 02: Container 内建容器][Chapter 02: Container 内建容器]]
+- Array
+- Slice
+- Map
+- [[*String Rune 字符串处理][String Rune 字符串处理]]
 
 ** 面向*接口*
-
 - 结构体
 - Duck Typing 概念
 - 组合的思想
-
+ 
 ** 函数式编程
 
 - 闭包
@@ -41,11 +45,7 @@
 
 - 分布式爬虫：相亲网站资料
 
-* Chapter 02: Basic Grammar 基本语法
-:PROPERTIES:
-:DIR:      img/
-:END:
-
+* Chapter 01: Basic Grammar 基本语法
 ** Var 赋值
 
 #+BEGIN_SRC go :exports both
@@ -308,7 +308,7 @@ func add(args ...int) int{}
 add(1, 2, 3, 4)
 #+END_SRC
 
-** Pointer 指针 :ATTACH:
+** Pointer 指针
 
 #+BEGIN_SRC go :exports both
 var a int = 2
@@ -345,13 +345,13 @@ int main(int argc, char *argv[]) {
 | pass_by_ref: | 4 |
 
 1. Golang 传参1: 拷贝参数值
-[[attachment:_20200725_030823screenshot.png]]
+[[../img/_20200725_030823screenshot.png]]
 
 2. Golang 传参2: 指针传递，达到引用传递效果
-[[attachment:_20200725_030532screenshot.png]]
+[[../img/_20200725_030532screenshot.png]]
 
 3. Golang 传参3: 自定义 Object 是要考虑当作值来用还是指针来用
-[[attachment:_20200725_031102screenshot.png]]
+[[../img/_20200725_031102screenshot.png]]
 
 
 - 交换值
@@ -367,11 +367,8 @@ func swap(a, b int) (int, int){
 }
 #+END_SRC
 
-* Chapter 03: Container 内建容器
-:PROPERTIES:
-:DIR:      img/
-:END:
 
+* Chapter 02: Container 内建容器
 ** Array 数组
 
 #+BEGIN_SRC go :exports both
@@ -492,11 +489,11 @@ func main() {
 : Allocate new array to slice append [5 6 7 8 9 10 11]
 
 
-[[attachment:_20200726_151241screenshot.png]]
+[[../img/_20200726_151241screenshot.png]]
 
 - Slice 的实现
  
-[[attachment:_20200726_152019screenshot.png]]
+[[../img/_20200726_152019screenshot.png]]
 
 - Slice 可以向后扩展，不可以向前扩展
 - Slice s[i] < len(s), cap(s)
@@ -626,9 +623,9 @@ Ch is a rune, i=4, ch=串
 
 - [[https://golang.org/pkg/strings/][strings - The Go Programming Language]]
 
-  notes @[[file:src/strings/strings.org][strings.org]]
+  notes @[[file:../src/strings/strings.org][strings.org]]
 
-* Chapter 04: Struct 面向“对象”
+* Chapter 03: Struct 面向“对象”
 
 ** Strut Method 结构体和方法 :ATTENTION:
 
@@ -805,14 +802,13 @@ func main() {
 : []
 ** GOPATH
 
--> More @ [[file:golang-gopath-gomod.org][go-mod-init]]
+-> More @[[file:gomod.org][go-mod-init]]
 
 - 默认在 ~/go;
 - 官方推荐都放在同一个 GOPATH;
 - 可以同时放在不同目录下;
 
-
-* Chapter 05: Interface 面向“接口”
+* Chapter 04: Interface 面向“接口”
 
 ** Duck typing 的概念
 
@@ -842,7 +838,7 @@ String download(R r) {
 ** 接口的定义和实现
 - golang 的 Duck typing
   - 由 *使用者* 定义
--> src @[[file:src/deepdivego/interface/][Chapter05: Interface Src]]
+-> src @[[file:../src/deepdivego/interface/][Chapter05: Interface Src]]
 #+BEGIN_SRC go :exports both
 
 type Retriever interface {
@@ -887,7 +883,7 @@ func (r *Retriever) Get(url string) string
 #+END_SRC
 
 - 怎么获取接口值类型？
-  -> src @[[file:src/deepdivego/interface/main.go][main.go]]
+  -> src @[[file:../src/deepdivego/interface/main.go][main.go]]
  
   - Switch
  #+BEGIN_SRC go :exports both
@@ -911,7 +907,7 @@ if _, ok := r.(mock.Retriever); ok {
 #+END_SRC
 
 - 表示任何类型： ~interface{}~
-  -> src @[[file:src/deepdivego/interface/queue/queue.go][queue.go]]
+  -> src @[[file:../src/deepdivego/interface/queue/queue.go][queue.go]]
 #+BEGIN_SRC go :exports both
 package queue
 
@@ -949,7 +945,7 @@ func session(s RetrieverPoster) string {
 
 - Reader and Writer
 
-  -> src @[[file:src/deepdivego/interface/main.go][Reader]]
+  -> src @[[file:../src/deepdivego/interface/main.go][Reader]]
   -> pkg src @[[file:/usr/local/Cellar/go/1.14.3/libexec/src/io/io.go::type Reader interface {][io.Reader]]
 
 #+BEGIN_SRC go :exports both
@@ -970,7 +966,7 @@ func main() {
 }
 #+END_SRC
 
-* Chapter 06: 函数式编程 & 闭包
+* Chapter 05: 函数式编程 & 闭包
 ** 函数式编程 vs 函数指针
 
 - 函数为一等公民：参数，变量，返回值都可以是函数
@@ -1058,7 +1054,7 @@ func main() {
 0 + ... + 9 = 45
 #+end_example
 
-[[attachment:_20200728_023353screenshot.png]]
+[[../img/_20200728_023353screenshot.png]]
 
 ** 其他语言的闭包
 
@@ -1250,7 +1246,7 @@ func main() {
 : 5 4 0 6 7
 : 5
 
-* Chapter 07: 错误处理和资源管理
+* Chapter 06: 错误处理和资源管理
 
 - 打开文件也要确保关闭；
 - 打开连接也要保证关闭；
@@ -1294,23 +1290,24 @@ main.main()
 exit status 2
 #+END_EXAMPLE
 
-- more -> @[[file:src/deepdivego/errhandle/fib/fib.go::func writeFile(filename string) {][WriteFib]]
+- more -> @[[file:../src/deepdivego/errhandle/fib/fib.go][WriteFib]]
 
 ** 错误处理概念
--> src @[[file:src/deepdivego/errhandle/fib/fib.go::func writeFile(filename string) {][WriteFib]]
+
+-> src @[[file:../src/deepdivego/errhandle/fib/fib.go][WriteFib]]
 
 #+BEGIN_SRC go :exports both
 file, err := os.OpenFile(filename, os.O_EXCL|os.O_CREATE, 0666)
 if err != nil {
-    // panic(err)
+	// panic(err)
 
-    if pathError, ok := err.(*os.PathError); !ok {
-        panic(err)
-    } else {
-        fmt.Printf("%s, %s, %s\n", pathError.Op, pathError.Path, pathError.Err)
-    }
-    // fmt.Println("Error", err)
-    return
+	if pathError, ok := err.(*os.PathError); !ok {
+		panic(err)
+	} else {
+		fmt.Printf("%s, %s, %s\n", pathError.Op, pathError.Path, pathError.Err)
+	}
+	// fmt.Println("Error", err)
+	return
 }
 #+END_SRC
 
@@ -1319,7 +1316,7 @@ if err != nil {
 
 
 - 如何实现统一的错误处理方式？
-  -> src @[[file:src/deepdivego/errhandle/filelistserver/web.go::func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {][errWrapper]]
+  -> src @[[file:../src/deepdivego/errhandle/filelistserver/web.go][errWrapper]]
 
 
 
@@ -1339,13 +1336,14 @@ if err != nil {
 
 ** 服务器统一出错管理2
 
--> src @[[file:src/deepdivego/errhandle/filelistserver/web.go::func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {][errWrapper]]
+-> src @[[file:../src/deepdivego/errhandle/filelistserver/web.go][errWrapper]]
 
 ** 总结
 
 - 意料之中的，尽量使用 error，如文件打不开；
 - 意料之外的，实在没办法的使用 panic，要尽量去避免；
-* Chapter 08: Debuging sucks & Testing rocks 测试及性能调优
+
+* Chapter 07: Debuging sucks & Testing rocks 测试及性能调优
 
 ** 传统测试 vs 表格驱动测试
 
@@ -1374,8 +1372,7 @@ tests := []struct {
 }
 
 for _, test := range tests {
-	if actual := add(test.a, test.b); actual != test.c {
-	}
+	if actual := add(test.a, test.b); actual != test.c {}
 }
 #+END_SRC
 
@@ -1384,12 +1381,11 @@ for _, test := range tests {
 - 可以部分失败
 - golang 语法可以使我们更容易实践表格驱动测试
 
-
 ** ~testing.T~: For test
-- src @[[file:src/deepdivego/testing][file:deepdivego/testing]]
+- src @[[file:../src/deepdivego/testing][file:deepdivego/testing]]
 
 ** ~testing.B~: For benchmark
--> src @[[file:src/deepdivego/testing][file:deepdivego/testing]]
+-> src @[[file:../src/deepdivego/testing][file:deepdivego/testing]]
 
 - test bench
 
@@ -1419,3 +1415,5 @@ Entering interactive mode (type "help" for commands, "o" for options)
 (pprof) web
 (pprof)
 #+END_EXAMPLE
+**
+

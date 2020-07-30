@@ -33,7 +33,7 @@ Go 1.11和1.12实现了对包管理的初步支持，Go的新依赖管理系统�
 
 * Create a New ~hello~ Module by Example
 
--> Example dir @ [[file:src/gomod/hello/][Go Mod ~hello~ Example]]
+-> Example dir @ [[file:../src/gomod/hello/][Go Mod ~hello~ Example]]
 
 
 - Create a new, empty directory somewhere outside ~$GOPATH/src~, ~cd~ into that
@@ -149,10 +149,11 @@ tagged prerelease version, or else the latest untagged version.)
 
 - List current modules and dependencys
 
+-> see godoc @[[https://golang.org/cmd/go/#hdr-Pseudo_versions][Pseudo_versions]]
 #+begin_example
 // go list -m all
 lroolle.com/hello
-golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c // a [[https://golang.org/cmd/go/#hdr-Pseudo_versions][go - The Go Programming Language]]pseudo-version
+golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c
 rsc.io/quote v1.5.2
 rsc.io/sampler v1.3.0
 #+end_example
@@ -299,8 +300,11 @@ This post walked through the process of tagging a module with semantic versions 
 * Questions
 
 ** ~go mod init~ already exists: rm go.mod
-** Github private repo access? [[https://dev.to/alextrending/how-to-use-your-private-go-lib-in-github-actions-4lh9][How to use your private Go lib in Github Actions - DEV]]
+** Github private repo access?
+-> refer to @[[https://dev.to/alextrending/how-to-use-your-private-go-lib-in-github-actions-4lh9][How to use your private Go lib in Github Actions - DEV]]
+
 ** 可以把项目放在$GOPATH/src下吗？
+
 可以。 但是go会根据GO111MODULE的值而采取不同的处理方式 默认情况下，GO111MODULE=auto 自动模式
 
 - ~auto~ 自动模式下，项目在$GOPATH/src里会使用$GOPATH/src的依赖包，在$GOPATH/src外，就使用go.mod 里 require的包
