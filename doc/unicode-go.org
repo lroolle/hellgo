@@ -1,10 +1,45 @@
-# Insert note for this entry.
-# Finish with C-c C-c, or cancel with C-c C-k.
+#+TITLE: Unicode and Utf-8
 
+
+* What is Unicode?
+
+Unicode is a *Charset*
 
 * Unicode
 
-** head
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var s = "中国人"
+	for _, v := range s {
+		fmt.Printf("%s => 码点：%X\n", string(v), v)
+	}
+}
+#+END_SRC
 
+#+RESULTS:
+: 中 => 码点：4E2D
+: 国 => 码点：56FD
+: 人 => 码点：4EBA
+
+
+我们知道在Go语言中，rune这种builtin类型被用来表示一个“Unicode字符”，因此一个rune
+的值就是其对应Unicode字符的序号，即码点。通过for range语句对字符串进行迭代访问是，
+range会依次返回Unicode字符对应的rune，即码点。这里可以看到Unicode字符“中”对应的
+rune（码点）为0x4E2D。
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var s = "中"
+	fmt.Printf("%s => UTF8编码: ", s)
+	for _, v := range []byte(s) {
+		fmt.Printf("%X", v)
+	}
+	fmt.Printf("\n")
+}
+#+END_SRC
+
+#+RESULTS:
+: 中 => UTF8编码: E4B8AD
 
 * References

@@ -1,0 +1,2079 @@
+#+TITLE: Go Interview
+#+DATE: 2020-08-17
+
+#+EXPORT_FILE_NAME: go-interview
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
+* Go Interview
+
+#+begin_quote
+Just go Interview!
+#+end_quote
+
+* Go Basics
+** 字符串判断是否全都不同(不允许额外内存)
+
+考察字符串操作，可使用  ~strings.LastIndex~ 或者 ~strings.Count~ 实现。
+
+#+begin_quote
+-> doc/go-pkg-strings.org
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports '("fmt" "strings")
+func isUniqueString1(s string) bool {
+	for _, v := range []rune(s) {
+		if strings.Count(s, string(v)) > 1 {
+			return false
+		}
+	}
+	return true
+}
+
+func isUniqueString2(s string) bool {
+	for i, v := range s {
+		if strings.IndexAny(s, string(v)) != i {
+			return false
+		}
+	}
+	return true
+}
+
+func main() {
+	fmt.Println(isUniqueString1("abcd"), isUniqueString2("abcd"))
+	fmt.Println(isUniqueString1("abcda"), isUniqueString2("abcda"))
+	fmt.Println(isUniqueString1("蜜蜂"), isUniqueString2("蜜蜂"))
+}
+#+END_SRC
+
+#+RESULTS:
+: true true
+: false false
+: true true
+
+** Reverses
+
+*** Reverse String
+先把 string 转成  ~[]rune~ 翻转数组，再转回字符串
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func ReverseString(s string) string {
+	runes := []rune(s)
+	size := len(runes)
+	for i := 0; i < size/2; i++ {
+		runes[size-i-1], runes[i] = runes[i],  runes[size-i-1]
+	}
+	return string(runes)
+}
+
+func main() {
+	fmt.Println(ReverseString("Abcdefg 汉语 The God"))
+}
+#+END_SRC
+
+#+RESULTS:
+: doG ehT 语汉 gfedcbA
+
+*** Reverse Words in String
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "strings"
+
+func ReverseWord(s string) string {
+	runes := []rune(s)
+	size := len(runes)
+	for i := 0; i < size/2; i++ {
+		tmp := runes[i]
+		runes[i] = runes[size-i-1]
+		runes[size-i-1] = tmp
+	}
+	return string(runes)
+}
+
+func ReverseString(s string) string {
+	words := strings.Split(s, " ")
+	for i, w := range words {
+		wordReversed := ReverseWord(w)
+		words[i] = wordReversed
+	}
+	return strings.Join(words, " ")
+}
+
+func main() {
+	s := "Let's take LeetCode contest"
+	fmt.Println(ReverseString(s))
+}
+#+END_SRC
+
+#+RESULTS:
+: s'teL ekat edoCteeL tsetnoc
+
+*** Defer Reverse
+#+begin_quote
+-> [[https://stackoverflow.com/a/38017257/6054093]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// ret must named before func
+func reverse(s string) (ret string) {
+	for _, v := range s {
+		defer func(r rune) { ret += string(r) }(v)
+	}
+	return ret
+}
+
+func main() {
+	fmt.Println(reverse("abc defg"))
+	fmt.Println(reverse("幽灵 公主"))
+}
+#+END_SRC
+
+#+RESULTS:
+: gfed cba
+: 主公 灵幽
+
+****  Why Named Return with Defer?
+#+begin_quote
+-> [[https://stackoverflow.com/questions/48680222/what-is-the-difference-between-named-return-value-and-normal-return-value][go - What is the difference between named return value and normal return valu...]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func c() (i int) {
+	defer func() {
+		i++
+		fmt.Println("c defer : ", i)
+	}()
+	// You can not change returned i named
+	// So this will still return i=1
+	return 0
+}
+
+func main() {
+	fmt.Println("c() =", c())
+}
+#+END_SRC
+
+#+RESULTS:
+: c defer :  1
+: c() = 1
+
+#+BEGIN_SRC go :exports both :imports fmt
+func f(n int) (res int, err error) {
+	if n == 1 {
+		err = fmt.Errorf("%s", "n=1")
+		return
+	}
+	if _, err := f(n - 1); err != nil {
+		return res, err // invalid return statement: err is shadowed
+	}
+	return
+}
+func main() {
+	fmt.Println(f(2))
+}
+#+END_SRC
+
+#+RESULTS:
+: 0 n=1
+
+*** SB(String Builder) Reverse
+#+begin_quote
+-> [[https://stackoverflow.com/a/57645384/6054093][How to reverse a string in Go? - Stack Overflow]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "strings"
+
+// Reverse reverses string using strings.Builder. It's about 3 times faster
+// than the one with using a string concatenation
+func Reverse(in string) string {
+	var sb strings.Builder
+	runes := []rune(in)
+	for i := len(runes) - 1; 0 <= i; i-- {
+		sb.WriteRune(runes[i])
+	}
+	return sb.String()
+}
+func main() {
+	fmt.Println(Reverse("Abcdefg 汉语 The God"))
+}
+#+END_SRC
+
+#+RESULTS:
+: doG ehT 语汉 gfedcbA
+
+*** Recursive Reverse
+#+BEGIN_SRC go :exports both :imports "fmt"
+func RecursiveReverse(str string) string {
+	if str == "" {
+		return ""
+	}
+	runes := []rune(str)
+	return RecursiveReverse(string(runes[1:])) + string(runes[0])
+}
+
+func RecursiveReverseSlice(s []rune) []rune {
+	if len(s) == 0 {
+		return s
+	}
+	return append(RecursiveReverseSlice(s[1:]), s[0])
+}
+
+func main() {
+	s := "贝多芬 OP37"
+	fmt.Println(RecursiveReverse(s))
+}
+#+END_SRC
+
+#+RESULTS:
+: 73PO 芬多贝
+*** Reverse Slice
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+for i := len(a)/2 - 1; i >= 0; i-- {
+	opp := len(a) - 1 - i
+	a[i], a[opp] = a[opp], a[i]
+}
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
+	a[left], a[right] = a[right], a[left]
+}
+#+END_SRC
+
+** Switch Type
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type student struct {
+	Name string
+}
+
+func st(v interface{}) {
+	stype, ok := v.(student)
+	fmt.Printf("%#v, %v\n", stype, ok)
+
+	switch msg := v.(type) {
+	case *student, student:
+		fmt.Printf("%#v", msg)
+		// fmt.Printf("%#v", msg.Name)
+	}
+}
+
+func main() {
+	s := student{"alice"}
+	st(s)
+}
+#+END_SRC
+
+#+RESULTS:
+: main.student{Name:"alice"}, true
+: main.student{Name:"alice"}
+
+Given an expression x of type interface{}, the following type switch:
+#+BEGIN_SRC go :exports both :imports "fmt"
+switch i := x.(type) {
+case nil:
+	printString("x is nil")                // type of i is type of x (interface{})
+case int:
+	printInt(i)                            // type of i is int
+case float64:
+	printFloat64(i)                        // type of i is float64
+case func(int) float64:
+	printFunction(i)                       // type of i is func(int) float64
+case bool, string:
+    // NOTE: type of i is type of x (interface{})
+	printString("type is bool or string")
+default:
+	// type of i is type of x (interface{})
+	printString("don't know the type")
+}
+#+END_SRC
+
+** JSON Private Values
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "encoding/json"
+
+type People struct {
+	Name string `json:"name"`
+}
+
+func main() {
+	data := `{
+		"name":"11"
+	}`
+	var p People
+	err := json.Unmarshal([]byte(data), &p)
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+	fmt.Printf("%#v", p)
+}
+#+END_SRC
+
+#+RESULTS:
+: main.People{Name:"11"}
+
+** String()
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type People struct {
+	Name string
+}
+
+func (p *People) String() string {
+	return fmt.Sprintf("print: %v", p.Name)
+}
+
+func main() {
+	p := &People{"Alice"}
+	// p.String()
+	fmt.Println(p.String())
+	fmt.Println(p)
+}
+#+END_SRC
+
+#+RESULTS:
+: print: Alice
+: print: Alice
+
+** The Empty Struct
+*** Main Usage
+#+BEGIN_SRC go :exports both :imports "fmt"
+type Q struct{}
+
+var q struct{}
+var m map[KeyType]struct{}
+var c chan struct{}
+#+END_SRC
+
+*** Width
+Width describes *the number of bytes of storage an instance of a type occupies*.
+As a process’s address space is one dimensional, I think width is a more apt
+than size.
+
+*Width is a property of a type*. As every value in a Go program has a type, the
+width of the value is defined by its type and is always a multiple of 8 bits.
+
+We can discover the width of any value, and thus the width of its type using the
+~unsafe.Sizeof()~ function.
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "unsafe"
+
+func main() {
+	var s string
+	var c complex128
+	var slice []int
+	var a [3]uint32
+	var u16 uint16
+	var u32 uint32
+	fmt.Printf("s=%q, SizeOf(s)=%v\n", s, unsafe.Sizeof(s))
+	fmt.Printf("c=%v, SizeOf(c)=%v\n", c, unsafe.Sizeof(c))
+	fmt.Printf("a=%v, SizeOf(a)=%v\n", a, unsafe.Sizeof(a))
+	fmt.Printf("slice=%v, SizeOf(slice)=%v\n", slice, unsafe.Sizeof(slice))
+	fmt.Printf("u16=%v, SizeOf(u16)=%v\n", u16, unsafe.Sizeof(u16))
+	fmt.Printf("u32=%v, SizeOf(u32)=%v\n", u32, unsafe.Sizeof(u32))
+
+	type S struct {
+		a uint16 // size 2, alignment 2, padding to 4
+		b uint32 // 4
+		s string // 16
+	}
+	var st S
+	fmt.Printf("st=%q, SizeOf(st)=%v\n", st, unsafe.Sizeof(st))
+
+	// Empty Struct
+	type ES struct{}
+	es := ES{}
+	// es := struct{}{}
+	fmt.Printf("es=%q, SizeOf(es)=%v\n", es, unsafe.Sizeof(es))
+
+	// Embedded Empty Struct
+	type EES struct {
+		es  ES
+		es2 struct{}
+		es3 struct{}
+	}
+	var ees = EES{}
+	fmt.Printf("ees=%q, SizeOf(ees)=%v\n", ees, unsafe.Sizeof(ees))
+
+	// List of empty struct
+	var les [1000000000]EES
+	fmt.Printf("len(les)=%d, SizeOf(les)=%v\n", len(les), unsafe.Sizeof(les))
+
+	// Make lists of empty struct consume only the space for their slice header
+	var mles = make([]struct{}, 1000000000)
+	fmt.Printf("len(mles)=%d, SizeOf(mles)=%v\n", len(mles), unsafe.Sizeof(mles))
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+s="", SizeOf(s)=16
+c=(0+0i), SizeOf(c)=16
+a=[0 0 0], SizeOf(a)=12
+slice=[], SizeOf(slice)=24
+u16=0, SizeOf(u16)=2
+u32=0, SizeOf(u32)=4
+st={'\x00' '\x00' ""}, SizeOf(st)=24
+es={}, SizeOf(es)=0
+ees={{} {} {}}, SizeOf(ees)=0
+len(les)=1000000000, SizeOf(les)=0
+len(mles)=1000000000, SizeOf(mles)=24
+#+end_example
+
+1. The width of an array type is a multiple of its element type. A struct containing 3 int32 fields has alignment 4 but width 12.(/no padding between array elements/)
+2. Structs provide a more flexible way of defining composite types, whose width is the sum of the width of the constituent types, plus padding
+
+*** Two Distinct Zero-Size Variables /May/ Have the Same Address in Memory
+#+begin_quote
+A struct or array type has size zero if it contains no fields (or elements,
+respectively) that have a size greater than zero. Two distinct zero-size
+variables *may have the same address* in memory.
+
+-> [[http://golang.org/ref/spec#Size_and_alignment_guarantees][File ref/spec#Size_and_alignment_guarantees - The Go Programming Language]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "unsafe"
+
+func main() {
+	a := make([]struct{}, 10)
+	b := make([]struct{}, 20)
+	fmt.Printf("SizeOf(a)==SizeOf(b):%t, &a==&b:%t, &a[0]==&b[1]:%t\n", unsafe.Sizeof(a) == unsafe.Sizeof(b), &a == &b, &a[0] == &b[1])
+
+	// struct instances, not zero values
+	x := struct{}{}
+	y := struct{}{}
+	fmt.Printf("x==y:%t, &x==&y:%t\n", x == y, &x == &y)
+}
+#+END_SRC
+
+#+RESULTS:
+: SizeOf(a)==SizeOf(b):true, &a==&b:false, &a[0]==&b[1]:true
+: x==y:true, &x==&y:false
+
+Another Example:
+
+#+begin_quote
+-> [[https://stackoverflow.com/questions/48052722/addresses-of-slices-of-empty-structs][pointers - Addresses of slices of empty structs - Stack Overflow]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	a := make([]struct{}, 10)
+	b := make([]struct{}, 20)
+	c := make([]struct{}, 30)
+
+	fmt.Println("Println a[0]: ", a[0], &a[0])
+	fmt.Printf("&a == &b:%t, &b == &c:%t\n", &a == &b, &b == &c)
+	fmt.Printf("&a[0] == &b[0]:%t, &b[0] == &c[1]:%t\n", &a[0] == &b[0], &b[0] == &c[1])
+}
+#+END_SRC
+
+#+RESULTS:
+: Prinln a[0]:  {} &{}
+: &a == &b:false, &b == &c:false
+: &a[0] == &b[0]:false, &b[0] == &c[1]:true
+
+*** STRUCT{} AS A METHOD RECEIVER
+#+BEGIN_SRC go :exports both :imports "fmt"
+type S struct{}
+
+func (s *S) addr() { fmt.Printf("%p\n", s) }
+
+func main() {
+	var a, b S
+	a.addr()
+	b.addr()
+}
+#+END_SRC
+
+*** STRUCT{} AS A FREE MAP(SETS)
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "unsafe"
+func main() {
+	var m = make(map[int]struct{})
+	for i := 0; i < 4; i++ {
+		if i%2 == 0 {
+			m[i] = struct{}{}
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		v, ok := m[i]
+		fmt.Printf("v, ok=%d, %t, Sizeof(v)=%d\n", v, ok, unsafe.Sizeof(v))
+	}
+}
+#+END_SRC
+
+*** STRUCT{} AS SEMAPHORES AND TOKENS
+#+begin_quote
+As a general rule, every time you have channels used to signal something, rather
+than exchanging values, you can use empty structs.
+This will also make your code clearer, explicitly showing that you do not care
+about the values IN the channel.
+#+end_quote
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"sync"
+	"time"
+)
+
+const halfSecond = 500 * time.Millisecond
+
+func main() {
+	var wg sync.WaitGroup
+	wg.Add(50)
+
+	token := make(chan struct{}, 10)
+	for i := 0; i < 50; i++ {
+		go func() {
+			token <- struct{}{}
+			defer wg.Done()
+			time.Sleep(halfSecond)
+			<-token
+		}()
+	}
+	start := time.Now()
+	wg.Wait()
+	fmt.Printf("It took me %fs\n", time.Since(start).Seconds())
+}
+#+END_SRC
+
+#+RESULTS:
+: It took me 2.526317s
+
+The token channel is only used to limit the number of running go routines.  In
+particular, we are *making sure that no more than 10 goroutines will be running*
+at the same time.
+
+****
+*** STRUCT{} AS SINGLETONS
+#+begin_quote
+-> [[https://progolang.com/how-to-implement-singleton-pattern-in-go/][How to implement Singleton Pattern in Go | Pro Golang]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type S struct{}
+
+type T struct{}
+
+func main() {
+	var s, s2 S
+	var t, t2 T
+
+	fmt.Printf("&s %p %p\n", &s, &s2)
+	fmt.Printf("&t %p %p\n", &t, &t2)
+}
+#+END_SRC
+
+#+RESULTS:
+: &s 0x119f9e0 0x119f9e0
+: &t 0x119f9e0 0x119f9e0
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type singleton struct{}
+
+var instance *singleton
+
+func GetInstance() *singleton {
+	if instance == nil {
+		instance = &singleton{}
+	}
+	return instance
+}
+
+func main() {
+	fmt.Printf("s: %#v &s: %v\n", instance, &instance)
+	s1 := GetInstance()
+	fmt.Printf("s1: %#v &s1: %p\n", s1, &(*s1))
+
+	s2 := GetInstance()
+	fmt.Printf("s2: %#v &s2: %p\n", s2, &(*s2))
+}
+#+END_SRC
+
+#+RESULTS:
+: s: (*main.singleton)(nil) &s: 0x116f808
+: s1: &main.singleton{} &s1: 0x119f9e0
+: s2: &main.singleton{} &s2: 0x119f9e0
+
+*** Conclusion
+
+** Assign Map Struct Values
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type T struct {
+	value int
+}
+
+func main() {
+	m := make(map[int]T)
+	m[1] = T{1}
+	fmt.Println("map[int]T : ", m)
+
+	// m[1].value = 11 // PANIC: cannot assign to struct field m[1].value in ma
+	// &m[1] // can not take the address
+	m1 := m[1]
+	m1.value = 11
+	m[1] = m1
+	fmt.Println("-- by copy: ", m)
+
+	// Or, construct mapT by pointer
+	mp := make(map[int]*T)
+	mp[1] = &T{1}
+	fmt.Printf("map[int]*T: %v\n", mp[1])
+	mp[1].value = 11
+	fmt.Printf("by pointer: %v\n", mp[1])
+
+}
+#+END_SRC
+
+#+RESULTS:
+: map[int]T :  map[1:{1}]
+: -- by copy:  map[1:{11}]
+: map[int]*T: &{1}
+: by pointer: &{11}
+
+#+begin_quote
+-> [[https://stackoverflow.com/questions/32751537/why-do-i-get-a-cannot-assign-error-when-setting-value-to-a-struct-as-a-value-i][go - Why do I get a "cannot assign" error when setting value to a struct as a...]]
+-> [[https://stackoverflow.com/questions/17438253/accessing-struct-fields-inside-a-map-value-without-copying][go - Accessing struct fields inside a map value (without copying) - Stack Ove...]]
+#+end_quote
+
+#+begin_quote
+[[https://en.wikipedia.org/wiki/Hash_table#Dynamic_resizing][hashmaps can grow at runtime]], and then their values get moved around in memory,
+and the old locations become outdated. If values in maps were treated as regular
+addressable values, those internals of the map implementation would get exposed.
+#+end_quote
+
+So, you cant actually get the address of an item within maps
+
+** Go function arguments are passed by value.
+*** Pass by value
+
+#+begin_quote
+-> [[https://stackoverflow.com/questions/4938612/how-do-i-print-the-pointer-value-of-a-go-object-what-does-the-pointer-value-mea][How do I print the pointer value of a Go object? What does the pointer value ...]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func byval(cp *int) {
+	fmt.Printf("3. byval -- cp %T: &cp=%p cp=&i=%p  *cp=i=%v\n", cp, &cp, cp, *cp)
+	,*cp = 4143
+	fmt.Printf("4. byval -- cp %T: &cp=%p cp=&i=%p  *cp=i=%v\n", cp, &cp, cp, *cp)
+	cp = nil
+}
+
+func main() {
+	i := int(42)
+	fmt.Printf("1. main  --  i  %T: &i=%p  i=%v\n", i, &i, i)
+	p := &i
+	fmt.Printf("2. main  --  p %T: &p=%p  p=&i=%p   *p=i=%v\n", p, &p, p, *p)
+
+	byval(p)
+	fmt.Printf("5. main  --  p %T: &p=%p  p=&i=%p   *p=i=%v\n", p, &p, p, *p)
+	fmt.Printf("6. main  --  i  %T: &i=%p  i=%v\n", i, &i, i)
+}
+#+END_SRC
+
+#+RESULTS:
+: 1. main  --  i  int: &i=0xc0000160e8  i=42
+: 2. main  --  p *int: &p=0xc00000e030  p=&i=0xc0000160e8   *p=i=42
+: 3. byval -- cp *int: &cp=0xc00000e038 cp=&i=0xc0000160e8  *cp=i=42
+: 4. byval -- cp *int: &cp=0xc00000e038 cp=&i=0xc0000160e8  *cp=i=4143
+: 5. main  --  p *int: &p=0xc00000e030  p=&i=0xc0000160e8   *p=i=4143
+: 6. main  --  i  int: &i=0xc0000160e8  i=4143
+
+*** Explain
+
+In ~byval~, ~cp~ is a copy of ~p~, it does not affect ~p's~ value in ~main~.
+But ~cp's~ value is Pointer to ~i~, so ~*cp~ changes ~i's~ value in ~main~.
+Which means: a new copy of pointer to the same memory of ~i's~ address is created in ~byval~
+
+*** Conclusion
+
+#+begin_quote
+There is no ~Pass by Reference in Go!!!~
+#+end_quote
+
+** There is no pass-by-reference in Go
+*** What is a pointer?
+#+begin_quote
+A pointer is a value that points to the memory address of another variable.
+
+-> [[https://dave.cheney.net/2017/04/26/understand-go-pointers-in-less-than-800-words-or-your-money-back][Understand Go pointers in less than 800 words or your money back | Dave Cheney]]
+#+end_quote
+
+*** What is a reference variable?
+
+In languages like C++ you can declare an alias, or an alternate name to an
+existing variable. This is called a reference variable.
+
+#+BEGIN_SRC c
+#include <stdio.h>
+
+int main() {
+  int a = 10;
+  int &b = a;
+  int &c = b;
+  printf("%p %p %p\n", &a, &b, &c); // 0x7ffe114f0b14 0x7ffe114f0b14 0x7ffe114f0b14
+  return 0;
+}
+#+END_SRC
+
+You can see that a, b, and c all refer to the same memory location. A write to a
+will alter the contents of b and c. This is useful when you want to declare
+reference variables in different scopes–namely function calls.
+
+*** Go does not have reference variables
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var a int
+	var b, c = &a, &a
+	fmt.Printf(" b=%v,  c=%v\n", b, c)   // 0x1040a124 0x1040a124
+	fmt.Printf("&b=%p, &c=%p\n", &b, &c) // 0x1040c108 0x1040c110
+}
+#+END_SRC
+
+#+RESULTS:
+: b=0xc000016118,  c=0xc000016118
+: &b=0xc00000e028, &c=0xc00000e030
+
+*** But maps and channels are references, right? NO!
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func fn(m map[int]int) {
+	m = make(map[int]int)
+	fmt.Printf("fn:   m==nil: %t\n", m == nil)
+}
+
+func main() {
+	var m map[int]int
+	fn(m)
+	fmt.Printf("main: m==nil: %t\n", m == nil)
+}
+#+END_SRC
+
+#+RESULTS:
+: fn:   m==nil: false
+: main: m==nil: true
+
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "unsafe"
+
+func main() {
+	var m map[int]int
+	var p uintptr
+	fmt.Println(unsafe.Sizeof(m), unsafe.Sizeof(p)) // 8 8 (linux/amd64)
+}
+#+END_SRC
+
+*** If a Map isn’t a Reference Variable, What is It?
+
+#+begin_quote
+-> [[https://dave.cheney.net/2017/04/30/if-a-map-isnt-a-reference-variable-what-is-it][If a map isn’t a reference variable, what is it? | Dave Cheney]]
+#+end_quote
+
+#+begin_quote
+A map value is a pointer to a runtime.hmap structure.
+#+end_quote
+
+The ~runtime.makemap~ returned a ~*hmap~ pointer:
+ 
+#+BEGIN_SRC go :exports both
+// makemap implements a Go map creation make(map[k]v, hint)
+// If the compiler has determined that the map or the first bucket
+// can be created on the stack, h and/or bucket may be non-nil.
+// If h != nil, the map can be created directly in h.
+// If bucket != nil, bucket can be used as the first bucket.
+func makemap(t *maptype, hint int64, h *hmap, bucket unsafe.Pointer) *hmap
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "unsafe"
+
+func main() {
+	var m map[int]int
+	var p uintptr
+	fmt.Printf("Sizeof(m): %d, Sizeof(uintptr): %d\n", unsafe.Sizeof(m), unsafe.Sizeof(p)) // 8 8 (linux/amd64)
+}
+#+END_SRC
+
+#+RESULTS:
+: Sizeof(m): 8, Sizeof(uintptr): 8
+
+** Maps are not safe for concurrent use
+
+#+begin_quote
+-> [[https://golang.org/doc/faq#atomic_maps][Frequently Asked Questions (FAQ) - The Go Programming Language]]
+#+end_quote
+
+#+begin_quote
+Map access is unsafe only when updates are occurring. As long as all goroutines
+are only reading—looking up elements in the map, including iterating through it
+using a for range loop—and not changing the map by assigning to elements or
+doing deletions, it is safe for them to access the map concurrently without
+synchronization.
+#+end_quote
+
+Use ~sync.RWMutex~
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "sync"
+
+func main() {
+	var counter = struct {
+		sync.RWMutex
+		m map[string]int
+	}{m: make(map[string]int)}
+
+	counter.RLock()
+	n := counter.m["some_key"]
+	counter.RUnlock()
+	fmt.Println("some_key:", n)
+
+	counter.Lock()
+	counter.m["some_key"]++
+	n = counter.m["some_key"]
+	counter.Unlock()
+	fmt.Println("some_key:", n)
+}
+
+#+END_SRC
+
+#+RESULTS:
+: some_key: 0
+: some_key: 2
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "strings"
+
+func main() {
+	// s := make([]string, 0)
+	// s := []string{}
+	var s []string
+	fmt.Println(s == nil)
+
+	s = append(s, "Hello")
+	s = append(s, "world")
+	fmt.Println(strings.Join(s, " "))
+}
+#+END_SRC
+
+#+RESULTS:
+: true
+: Hello world
+** Should Methods declared on T or *T
+** Slices from the Ground Up
+
+*** Arrays
+
+1. They have a fixed size; [5]int is both an array of 5 ints and is distinct from [3]int.
+2. They are value types. Consider this example:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var a [5]int
+	b := a
+	b[2] = 7
+	fmt.Println(a, b) // prints [0 0 0 0 0] [0 0 7 0 0]
+}
+#+END_SRC
+
+#+RESULTS:
+: [0 0 0 0 0] [0 0 7 0 0]
+
+#+begin_quote
+The statement ~b := a~ declares a new variable, ~b~, of type ~[5]int~, and
+copies the contents of ~a~ to ~b~. Updating b has no effect on the contents of
+~a~ because ~a~ and ~b~ are independent values.
+#+end_quote
+
+*NOTE: In Go every assignment is a copy*
+
+*** Slices
+
+Go’s slice type differs from its array counterpart in two important ways:
+
+1. Slices do not have a fixed length. A slice’s length is not declared as part of its type, rather it is held within the slice itself and is recoverable with the built-in function len.
+2. Assigning one slice variable to another does not make a copy of the slices contents. This is because a slice does not directly hold its contents. Instead *a slice holds a ~pointer~ to its underlying array* which holds the contents of the slice.
+
+**** Slicing a slice
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var a = []int{1, 2, 3, 4, 5}
+	b := a[2:]
+	b[0] = 0
+	fmt.Println(a, b) // prints [1 2 0 4 5] [0 4 5]
+}
+#+END_SRC
+
+#+RESULTS:
+: [1 2 0 4 5] [0 4 5]
+
+**** Passing a slice to a function
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func negate(s []int) {
+	for i := range s {
+		s[i] = -s[i]
+	}
+}
+
+func main() {
+	var a = []int{1, 2, 3, 4, 5}
+	negate(a)
+	fmt.Println(a) // prints [-1 -2 -3 -4 -5]
+}
+#+END_SRC
+
+#+RESULTS:
+: [-1 -2 -3 -4 -5]
+
+*** The Slice Header Value
+
+**** Slice is Just a Struct
+#+BEGIN_SRC go :exports both :imports "fmt"
+package runtime
+
+type slice struct {
+	ptr unsafe.Pointer
+	len int
+	cap int
+}
+#+END_SRC
+
+**** Slice Header :ATTACH:
+:PROPERTIES:
+:ID:       a66eeacf-6d74-4ccd-965f-2e86f56a706d
+:DIR:      ./
+:END:
+
+[[attachment:_20200827_145240slice.001.png]]
+
+
+**** Independent Copy of the Slice S Declared in Main
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func double(s []int) {
+	s[0] = 0
+	s = append(s, 4, 5, 6)
+	// s is a copy of s from main
+	s[0] = 1
+	fmt.Println("double: s=", s)
+}
+
+func main() {
+	s := []int{1, 2, 3}
+	double(s)
+	fmt.Println("main: s=", s) // prints [1 2 3] 3
+}
+#+END_SRC
+
+#+RESULTS:
+: double: s= [1 2 3 4 5 6]
+: main: s= [0 2 3]
+
+#+begin_quote
+Just remember that any time you assign, subslice, or pass or return a slice,
+you’re *making a copy of the three fields in the slice header*; the pointer to
+the underlying array, and the current length and capacity.
+#+end_quote
+
+*** All in One
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func f(s []string, level int) {
+	if level > 5 {
+		return
+	}
+	// each level is copy of s
+	s = append(s, fmt.Sprint(level))
+	f(s, level+1)
+	fmt.Println("level", level, "s =", s)
+}
+
+func main() {
+	f(nil, 0)
+}
+#+END_SRC
+
+#+RESULTS:
+: level 5 s = [0 1 2 3 4 5]
+: level 4 s = [0 1 2 3 4]
+: level 3 s = [0 1 2 3]
+: level 2 s = [0 1 2]
+: level 1 s = [0 1]
+: level 0 s = [0]
+
+*** Slice Tricks
+**** AppendVector
+#+BEGIN_SRC go :exports both :imports "fmt"
+a = append(a, b...)
+#+END_SRC
+
+**** Copy a slice
+#+BEGIN_SRC go :exports both :imports "fmt"
+b := make([]T, len(a))
+copy(b, a)
+// or
+b = append([]T(nil), a...)
+// or
+b = append(a[:0:0], a...)  // See https://github.com/go101/go101/wiki
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	a := []int{0, 1, 2, 3}
+	b := append([]int(nil), a...)
+	c := append(a[:0:0], a...)
+	fmt.Println(b, c)
+}
+#+END_SRC
+
+#+RESULTS:
+: [0 1 2 3] [0 1 2 3]
+**** Delete
+#+BEGIN_SRC go :exports both :imports "fmt"
+i := 1
+a := []int{0, 1, 2, 3, 4, 5}
+a = append(a[:i], a[i+1:]...)
+fmt.Println(a)
+// or
+a = a[:i+copy(a[i:], a[i+1:])]
+fmt.Println(a)
+#+END_SRC
+
+#+RESULTS:
+: [0 2 3 4 5]
+: [0 3 4 5]
+
+**** Move to Front, or Append If Not Present, (in place)
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// moveToFront moves needle to the front of haystack, in place if possible.
+func moveToFront(needle string, haystack []string) []string {
+	if len(haystack) == 0 || haystack[0] == needle {
+		return haystack
+	}
+	var prev string
+	for i, elem := range haystack {
+		switch {
+		case i == 0:
+			haystack[0] = needle
+			prev = elem
+		case elem == needle:
+			haystack[i] = prev
+			return haystack
+		default:
+			haystack[i] = prev
+			prev = elem
+		}
+	}
+	return append(haystack, prev)
+}
+
+func main() {
+	haystack := []string{"a", "b", "c", "d", "e"} // [a b c d e]
+	haystack = moveToFront("c", haystack)         // [c a b d e]
+	fmt.Println(haystack)
+	haystack = moveToFront("f", haystack)         // [f c a b d e]
+	fmt.Println(haystack)
+}
+#+END_SRC
+
+#+RESULTS:
+: [c a b d e]
+: [f c a b d e]
+
+
+**** Sliding Window
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func slidingWindow(size int, input []int) [][]int {
+	// returns the input slice as the first element
+	if len(input) <= size {
+		return [][]int{input}
+	}
+
+	// allocate slice at the precise size we need
+	r := make([][]int, 0, len(input)-size+1)
+
+	for i, j := 0, size; j <= len(input); i, j = i+1, j+1 {
+		r = append(r, input[i:j])
+	}
+
+	return r
+}
+func main() {
+	input := []int{0, 1, 2, 3, 4, 5, 6}
+	fmt.Println(slidingWindow(3, input))
+}
+#+END_SRC
+
+#+RESULTS:
+: [[0 1 2] [1 2 3] [2 3 4] [3 4 5] [4 5 6]]
+
+** Channel in Two Goroutines
+
+这里两个 Goroutine 执行不定，第一个没有启动可能第二个已经跑完了
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"sync"
+	"time"
+)
+
+func main() {
+	var wg sync.WaitGroup
+	ch := make(chan int, 1000)
+
+	wg.Add(2)
+
+	go func() {
+		for i := 0; i < 5; i++ {
+			ch <- i
+		}
+		defer wg.Done()
+	}()
+
+	go func() {
+		time.Sleep(time.Millisecond)
+		for {
+			a, ok := <-ch
+			if !ok {
+				fmt.Println("close")
+				break
+			}
+			fmt.Println("a: ", a)
+		}
+		defer wg.Done()
+	}()
+
+	fmt.Println("ok")
+	go func() {
+		time.Sleep(time.Second)
+		wg.Wait()
+		close(ch)
+	}()
+}
+#+END_SRC
+
+#+RESULTS:
+: ok
+
+#+begin_quote
+-> [[https://dave.cheney.net/2016/03/19/should-methods-be-declared-on-t-or-t][Should methods be declared on T or *T | Dave Cheney]]
+#+end_quote
+
+you should not copy a ~sync.Mutex~ value as that breaks the invariant of the mutex.
+As mutexes control access to other things, they are frequently wrapped up in a
+struct with the value they control:
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "sync"
+
+type Val struct {
+	sync.Mutex
+	val int
+}
+
+func (v *Val) Get() int {
+	v.Lock()
+	defer v.Unlock()
+	return v.val
+}
+
+func (v *Val) Add(n int) {
+	v.Lock()
+	defer v.Unlock()
+	v.val += n
+}
+
+type Stats struct {
+	a, b, c Val
+}
+
+func (s Stats) Sum() int {
+	return s.a.Get() + s.b.Get() + s.c.Get() // whoops
+}
+
+func main() {
+	s := Stats{Val{val: 1}, Val{val: 2}, Val{val: 3}}
+	fmt.Println(s.Sum())
+}
+#+END_SRC
+
+*** Conclusion
+
+1. We say ~T~ but that is just a place holder for a type that you declare.
+2. This rule is recursive, taking the address of a variable of type ~*T~ returns a result of type ~**T~.
+3. This is why nobody can declare methods on primitive types like int.
+4. Methods in Go are just syntactic sugar for a function which passes the receiver as the first formal parameter.
+5. If the method does not mutate its receiver, does it need to be a method?
+** A Uniform Pseudo-Random Select
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "runtime"
+
+func main() {
+	runtime.GOMAXPROCS(1)
+	int_chan := make(chan int, 1)
+	string_chan := make(chan string, 1)
+	int_chan <- 1
+	string_chan <- "hello"
+
+	select {
+	case value := <-int_chan:
+		fmt.Println(value)
+	case value := <-string_chan:
+		panic(value)
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: 1
+
+#+begin_quote
+-> [[https://stackoverflow.com/questions/11117382/priority-in-go-select-statement-workaround][concurrency - Priority in Go select statement workaround - Stack Overflow]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func sender(out chan int, exit chan bool) {
+	for i := 1; i <= 10; i++ {
+		out <- i
+	}
+	exit <- true
+}
+
+func main() {
+	out := make(chan int, 10)
+	exit := make(chan bool)
+
+	go sender(out, exit)
+
+L:
+	for {
+		select {
+		case i := <-out:
+			fmt.Printf("Value: %d\n", i)
+		case <-exit:
+			fmt.Println("Exiting")
+			break L
+		}
+	}
+	fmt.Println("Did we get all 10? Most likely not")
+}
+#+END_SRC
+
+* Probably not Known 10 Things about GO
+** 1. Anonymous structs
+
+*** Grouped globals
+#+BEGIN_SRC go :exports both :imports "fmt"
+var config struct {
+	APIKey      string
+	OAuthConfig oauth.Config
+}
+
+config.APIKey = "BADC0C0A"
+#+END_SRC
+
+*** Template data
+#+BEGIN_SRC go :exports both :imports "fmt"
+data := struct {
+	Title string
+	Users []*User
+}{
+	title,
+	users,
+}
+err := tmpl.Execute(w, data)
+#+END_SRC
+
+(Cheaper and safer than using map[string]interface{}.)
+
+*** Test Tables
+#+BEGIN_SRC go :exports both :imports "fmt"
+var indexRuneTests = []struct {
+	s    string
+	rune rune
+	out  int
+}{
+	{"a A x", 'A', 2},
+	{"some_text=some_value", '=', 9},
+	{"☺a", 'a', 3},
+	{"a☻☺b", '☺', 4},
+}
+#+END_SRC
+
+*** Embedded Lock
+#+BEGIN_SRC go :exports both :imports "fmt"
+var hits struct {
+	sync.Mutex
+	n int
+}
+
+hits.Lock()
+hits.n++
+hits.Unlock()
+#+END_SRC
+
+** 2. Nested structs
+
+Decoding deeply nested JSON data
+
+#+BEGIN_SRC json
+{
+  "data": {
+    "children": [
+      {
+        "data": {
+          "title": "The Go homepage",
+          "url": "http://golang.org/"
+        }
+      }
+    ]
+  }
+}
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type Item struct {
+	Title string
+	URL   string
+}
+
+type Response struct {
+	Data struct {
+		Children []struct {
+			Data Item
+		}
+	}
+}
+#+END_SRC
+
+** 3. Command-line Doc
+
+#+BEGIN_SRC sh :exports both :results output replace
+go doc sync Mutex
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+package sync // import "sync"
+
+type Mutex struct {
+	// Has unexported fields.
+}
+    A Mutex is a mutual exclusion lock. The zero value for a Mutex is an
+    unlocked mutex.
+
+    A Mutex must not be copied after first use.
+
+func (m *Mutex) Lock()
+func (m *Mutex) Unlock()
+#+end_example
+
+#+BEGIN_SRC sh :exports both :results output replace
+go doc -src sync.Mutex
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+package sync // import "sync"
+
+// A Mutex is a mutual exclusion lock.
+// The zero value for a Mutex is an unlocked mutex.
+//
+// A Mutex must not be copied after first use.
+type Mutex struct {
+	state int32
+	sema  uint32
+}
+
+func (m *Mutex) Lock()
+func (m *Mutex) Unlock()
+#+end_example
+
+** 5. go get supports custom domains
+
+Yep:
+#+BEGIN_SRC sh :exports both :results output replace
+go get camlistore.org/pkg/netutil
+#+END_SRC
+
+See `go help importpath` for the details.
+
+** 6. Mock out the file system
+
+Got a package that works with the file system, but don't want your tests to
+actually use the disk?
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+var fs fileSystem = osFS{}
+
+type fileSystem interface {
+	Open(name string) (file, error)
+	Stat(name string) (os.FileInfo, error)
+}
+
+type file interface {
+	io.Closer
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+	Stat() (os.FileInfo, error)
+}
+
+// osFS implements fileSystem using the local disk.
+type osFS struct{}
+
+func (osFS) Open(name string) (file, error)        { return os.Open(name) }
+func (osFS) Stat(name string) (os.FileInfo, error) { return os.Stat(name) }
+#+END_SRC
+
+** 7. Method expressions
+#+BEGIN_SRC go :exports both :imports "fmt"
+
+type T struct {}
+func (T) Foo(s string) { println(s) }
+
+var fn func(T, string) = T.Foo
+#+END_SRC
+
+Real example from os/exec:
+#+BEGIN_SRC go :exports both :imports "fmt"
+func (c *Cmd) stdin() (f *os.File, err error)
+func (c *Cmd) stdout() (f *os.File, err error)
+func (c *Cmd) stderr() (f *os.File, err error)
+
+type F func(*Cmd) (*os.File, error)
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+for _, setupFd := range []F{(*Cmd).stdin, (*Cmd).stdout, (*Cmd).stderr} {
+	fd, err := setupFd(c)
+	if err != nil {
+		c.closeDescriptors(c.closeAfterStart)
+		c.closeDescriptors(c.closeAfterWait)
+		return err
+	}
+	c.childFiles = append(c.childFiles, fd)
+}
+#+END_SRC
+
+** 8. Send and receive on the same channel
+#+BEGIN_SRC go :exports both :imports "fmt"
+var battle = make(chan string)
+
+func warrior(name string, done chan struct{}) {
+	select {
+	case opponent := <-battle:
+		fmt.Printf("%s beat %s\n", name, opponent)
+	case battle <- name:
+		fmt.Printf("%s lost :-(\n", name)
+	}
+	done <- struct{}{}
+}
+
+func main() {
+	done := make(chan struct{})
+	langs := []string{"Go", "C", "C++", "Java", "Perl", "Python"}
+	for _, l := range langs {
+		go warrior(l, done)
+	}
+	for _ = range langs {
+		<-done
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: Go lost :-(
+: Perl lost :-(
+: C++ beat Perl
+: Python beat Go
+: C beat Java
+: Java lost :-(
+
+#+begin_quote
+Note that one interesting aspect of using struct{} for the type pushed to a
+channel (as opposed to int or bool), is that the size of an empty struct is 0!
+#+end_quote
+
+** 9. Using close to broadcast
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"time"
+	"math/rand"
+)
+func waiter(i int, block, done chan struct{}) {
+	time.Sleep(time.Duration(rand.Intn(3000)) * time.Millisecond)
+	fmt.Println(i, "waiting...")
+	// blocks until close, closed chan always can receive from
+	<-block
+	fmt.Println(i, "done!")
+	done <- struct{}{}
+}
+
+func main() {
+	block, done := make(chan struct{}), make(chan struct{})
+	for i := 0; i < 4; i++ {
+		go waiter(i, block, done)
+	}
+	time.Sleep(5 * time.Second)
+	close(block)
+	for i := 0; i < 4; i++ {
+		<-done
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: 2 waiting...
+: 3 waiting...
+: 1 waiting...
+: 0 waiting...
+: 0 done!
+: 1 done!
+: 3 done!
+: 2 done!
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"time"
+	"math/rand"
+)
+
+type Work string
+
+func (w Work) Do()     { time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond) }
+func (w Work) Refuse() { time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond) }
+func makeWork(ch chan Work) {
+	for i := 0; ; i++ {
+		ch <- Work(fmt.Sprintf("job %x", i))
+	}
+}
+
+func worker(i int, ch chan Work, quit chan struct{}) {
+	var quitting bool
+	for {
+		select {
+		case w := <-ch:
+			if quitting {
+				w.Refuse()
+				fmt.Println("worker", i, "refused", w)
+				break
+			}
+			w.Do()
+			fmt.Println("worker", i, "processed", w)
+		case <-quit:
+			fmt.Println("worker", i, "quitting")
+			quitting = true
+		}
+	}
+}
+
+func main() {
+	ch, quit := make(chan Work), make(chan struct{})
+	go makeWork(ch)
+	for i := 0; i < 4; i++ {
+		go worker(i, ch, quit)
+	}
+	time.Sleep(5 * time.Second)
+	close(quit)
+	time.Sleep(2 * time.Second)
+}
+#+END_SRC
+
+#+RESULTS:
+
+** 10. Nil channel in select
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"math/rand"
+	"time"
+)
+
+type Work string
+
+func (w Work) Do()     { time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond) }
+func (w Work) Refuse() { time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond) }
+func makeWork(ch chan Work) {
+	for i := 0; ; i++ {
+		ch <- Work(fmt.Sprintf("job %x", i))
+	}
+}
+
+func worker(i int, ch chan Work, quit chan struct{}) {
+	for {
+		select {
+		case w := <-ch:
+			if quit == nil {
+				w.Refuse()
+				fmt.Println("worker", i, "refused", w)
+				break
+			}
+			w.Do()
+			fmt.Println("worker", i, "processed", w)
+		case <-quit:
+			fmt.Println("worker", i, "quitting")
+			quit = nil
+		}
+	}
+}
+
+func main() {
+	ch, quit := make(chan Work), make(chan struct{})
+	go makeWork(ch)
+	for i := 0; i < 4; i++ {
+		go worker(i, ch, quit)
+	}
+	time.Sleep(5 * time.Second)
+	close(quit)
+	time.Sleep(2 * time.Second)
+}
+#+END_SRC
+
+#+RESULTS:
+
+* Common Mistakes
+#+begin_quote
+-> [[https://github.com/golang/go/wiki/CommonMistakes#introduction][CommonMistakes · golang/go Wiki · GitHub]]
+#+end_quote
+
+** Loop 循环指针陷阱
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var out []*int
+	for i := 0; i < 3; i++ {
+		out = append(out, &i)
+	}
+	fmt.Printf("same addresses: %#v\n", out)
+	fmt.Printf("values: %#v %#v %#v\n", *out[0], *out[1], *out[2])
+}
+#+END_SRC
+
+#+RESULTS:
+: same addresses: []*int{(*int)(0xc00010c008), (*int)(0xc00010c008), (*int)(0xc00010c008)}
+: values: 3 3 3
+
+FIX: copy the value to new scope:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var out []*int
+	for i := 0; i < 3; i++ {
+		// copies the loop variable i into a new variable scoped
+		i := i
+		out = append(out, &i)
+	}
+	fmt.Printf("diff addresses: %#v\n", out)
+	fmt.Printf("values: %#v %#v %#v\n", *out[0], *out[1], *out[2])
+}
+#+END_SRC
+
+#+RESULTS:
+: diff addresses: []*int{(*int)(0xc0000b2008), (*int)(0xc0000b2010), (*int)(0xc0000b2018)}
+: values: 0 1 2
+
+Another exmaple:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	var out [][]int
+	as := [][1]int{{1}, {2}, {3}}
+	for _, i := range as {
+		i := i
+		out = append(out, i[:])
+	}
+	fmt.Println("Values:", out)
+}
+#+END_SRC
+
+#+RESULTS:
+: Values: [[1] [2] [3]]
+
+** Using goroutines on loop iterator variables
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "time"
+
+var values = []int{1, 2, 3}
+
+func main() {
+	fmt.Printf("Single variable value in goroutine: ")
+	for _, val := range values {
+		go func() {
+			fmt.Printf("%v ", val)
+		}()
+	}
+	time.Sleep(time.Millisecond)
+
+	fmt.Printf("\nPass value to each goroutine: ")
+	for _, val := range values {
+		go func(val interface{}) {
+			fmt.Printf("%v ", val)
+		}(val)
+	}
+	time.Sleep(time.Millisecond)
+
+	fmt.Printf("\nVariables declared within the body of a loop are not shared between iterations: ")
+	var valslice = []int{4, 5, 6}
+	for i := range valslice {
+		val := valslice[i]
+		go func() {
+			fmt.Printf("%v ", val)
+		}()
+	}
+	time.Sleep(time.Millisecond)
+
+	fmt.Printf("\nFuncs are executed before the variable changes: ")
+	for i := 1; i < 6; i++ {
+		func() {
+			fmt.Printf("%v ", i)
+		}()
+	}
+	time.Sleep(time.Millisecond)
+
+	fmt.Printf("\nGoroutines are NOT executed before the variable changes: ")
+	for i := 1; i < 6; i++ {
+		go func() {
+			fmt.Printf("%v ", i)
+		}()
+	}
+	time.Sleep(time.Millisecond)
+}
+#+END_SRC
+
+*** What happens with closures running as goroutines?
+#+begin_quote
+-> [[https://golang.org/doc/faq#closures_and_goroutines][Frequently Asked Questions (FAQ) - What happens with closures running as goroutines?]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "time"
+
+type val struct {
+	value int
+}
+
+func (v *val) MyMethod() {
+	fmt.Printf("%v ", v.value)
+}
+
+func main() {
+	values := []val{val{1}, val{2}, val{3}}
+
+	fmt.Printf("\nSame val after loop: ")
+	for _, val := range values {
+		go val.MyMethod()
+	}
+	time.Sleep(time.Millisecond)
+
+	fmt.Printf("\nDeclare new val: ")
+	for _, val := range values {
+		val := val
+		go val.MyMethod()
+	}
+	time.Sleep(time.Millisecond)
+}
+#+END_SRC
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	done := make(chan bool)
+	values := []string{"a", "b", "c"}
+	for _, v := range values {
+		go func() {
+			fmt.Printf("%v ", v)
+			done <- true
+		}()
+	}
+
+	// wait for all goroutines to complete before exiting
+	for _ = range values {
+		<-done
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: c
+: c
+: c
+
+TO FIX:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	done := make(chan bool)
+	values := []string{"a", "b", "c"}
+	for _, v := range values {
+		// OR: v := v create a new 'v'.
+		go func(v interface{}) {
+			fmt.Printf("%v ", v)
+			done <- true
+		}(v)
+	}
+
+	// wait for all goroutines to complete before exiting
+	for _ = range values {
+		<-done
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: c b a
+
+** Defer cant block by panic
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	defer_call()
+}
+
+func defer_call() {
+	defer func() { fmt.Println(1) }()
+	defer func() { fmt.Println(2) }()
+
+	panic("Do Not Panic!")
+}
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_EXAMPLE
+1
+2
+panic:...
+#+END_EXAMPLE
+
+** 没有方法继承概念，所以不会重写方法
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type People struct{}
+
+func (p *People) ShowA() {
+	fmt.Println("showA")
+	p.ShowB()
+}
+func (p *People) ShowB() {
+	fmt.Println("showB")
+}
+
+type Teacher struct {
+	People
+}
+
+func (t *Teacher) ShowB() {
+	fmt.Println("teacher showB")
+}
+
+func main() {
+	t := Teacher{}
+	t.ShowA()
+}
+#+END_SRC
+
+#+RESULTS:
+: showA
+: showB
+
+* Go Concurrent
+** 如何用两个 Goroutine 交替打印数字和字母？ :chan:goroutine:
+
+*** With sync.WaitGroup
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "sync"
+
+func PrintNums(numChan, charChan chan bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 2; j++ {
+			fmt.Print(2*i + j + 1)
+		}
+		charChan <- true
+		<-numChan
+	}
+}
+
+func PrintChars(numChan, charChan chan bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for i := 0; i < 4; i++ {
+		<-charChan
+		for j := 0; j < 2; j++ {
+			fmt.Printf("%c", 'A'+(2*i+j))
+		}
+
+		numChan <- true
+	}
+}
+
+func main() {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	numChan := make(chan bool)
+	charChan := make(chan bool)
+	go PrintNums(numChan, charChan, &wg)
+	go PrintChars(numChan, charChan, &wg)
+
+	// Wait util 2 goroutines finished print
+	wg.Wait()
+}
+#+END_SRC
+
+*** Without sync.WaitGroup
+#+BEGIN_SRC go :exports both :imports "fmt"
+func PrintNums(numChan, charChan, done chan bool) {
+	for i := 1; i < 8; i += 2 {
+		fmt.Print(i)
+		fmt.Print(i + 1)
+		<-numChan
+		charChan <- true
+	}
+	defer func(done chan bool) {
+		done <- true
+	}(done)
+	// defer close(done)
+}
+
+func PrintChars(numChan, charChan, done chan bool) {
+	for i := 'A'; i < 'H'; i += 2 {
+		numChan <- true
+		fmt.Print(string(i))
+		fmt.Print(string(i + 1))
+		<-charChan
+	}
+	defer close(done)
+}
+
+func main() {
+	var numChan = make(chan bool)
+	var charChan = make(chan bool)
+	var done = make(chan bool)
+	go PrintNums(numChan, charChan, done)
+	go PrintChars(numChan, charChan, done)
+
+	// The unbuffered done blocks until received a value,
+	// Or, until the done channel closed, because:
+	//   a receive operation on a closed channel can always proceed immediately,
+	<-done
+}
+#+END_SRC
+** Closed Channel and Nil Channel
+
+1. A ~closed~ channel *never blocks*
+2. A ~nil~ channel *always blocks*
+
+*** Close VS Send values to channel
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"sync"
+	"time"
+)
+
+func main() {
+	const n = 1000000
+	finish := make(chan bool)
+	var done sync.WaitGroup
+	for i := 0; i < n; i++ {
+		done.Add(1)
+		go func() {
+			select {
+			case <-time.After(1 * time.Hour):
+			case <-finish:
+			}
+			done.Done()
+		}()
+	}
+	t0 := time.Now()
+	close(finish) // closing finish makes it ready to receive
+	done.Wait()   // wait for all goroutines to stop
+	fmt.Printf("Waited %v for %d goroutines to stop\n", time.Since(t0), n)
+}
+#+END_SRC
+
+#+RESULTS:
+: Waited 585.847695ms for 1000000 goroutines to stop
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"sync"
+	"time"
+)
+
+func main() {
+	const n = 1000000
+	finish := make(chan bool)
+	var done sync.WaitGroup
+	for i := 0; i < n; i++ {
+		done.Add(1)
+		go func() {
+			select {
+			case <-time.After(1 * time.Hour):
+			case <-finish:
+			}
+			done.Done()
+		}()
+	}
+	t0 := time.Now()
+	// close(finish) // closing finish makes it ready to receive
+	for i := 0; i < n; i++ {
+		finish <- true
+	}
+	done.Wait() // wait for all goroutines to stop
+	fmt.Printf("Waited %v for %d goroutines to stop\n", time.Since(t0), n)
+}
+#+END_SRC
+
+#+RESULTS:
+: Waited 769.014005ms for 1000000 goroutines to stop
+
+*** Nil Channel Wait for Multiple Channels to Close
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "time"
+
+func WaitMany(a, b chan bool) {
+	for a != nil || b != nil {
+		select {
+		case <-a:
+			a = nil
+		case <-b:
+			b = nil
+		}
+	}
+}
+
+func main() {
+	a, b := make(chan bool), make(chan bool)
+	t0 := time.Now()
+	go func() {
+		close(a)
+		close(b)
+	}()
+	WaitMany(a, b)
+	fmt.Printf("waited %v for WaitMany\n", time.Since(t0))
+}
+#+END_SRC
+
+#+RESULTS:
+: waited 9.212µs for WaitMany

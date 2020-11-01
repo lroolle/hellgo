@@ -1,0 +1,121 @@
+#+TITLE: A Simple JSNO Parser Written in Go
+#+DATE: 2020-11-01 09:46
+#+STARTUP: overview
+#+EXPORT_FILE_NAME: a-simple-jsno-parser-written-in-go
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: notes golang
+
+* A Simple JSNO Parser Written in Go
+
+"So, how to parse a JSON string?" As the interviewer asked.
+
+I'd like to try!
+
+To begin with, this ~Simple JSON Parser~ is totally a silly, funny and useless parser.
+
+* JSON Specification
+
+#+BEGIN_QUOTE
+[[https://www.json.org/json-en.html][Introducing JSON -- json.org]]
+#+END_QUOTE
+
+#+BEGIN_SRC json :exports both
+{
+  "name": "I'm JSON",
+  "string": "This is a string",
+  "int": 1111111111111111111,
+  "float": 3.141592653589757,
+  "bool": false,
+  "list": [1, 2, 3, "4"],
+  "null": null,
+  "dict": {
+    "name": "I'm dick",
+    "list": [
+      "Stringer tinker bell",
+      2.718281828459045,
+      true,
+      false,
+      null,
+      { "list": ["Funny little bulks", 2333], "blanks": "" }
+    ],
+    "object": { "AMD YES": "YES YES!!!", "INTEL": "SUCKS!!!" },
+    "中文": "博大精深！"
+  }
+}
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "encoding/json"
+
+func main() {
+	var exa1 string = `
+{
+  "name": "I'm JSON",
+  "string": "This is a string",
+  "int": 1,
+  "float": 3.141592653589757,
+  "bool": false,
+  "list": [1, 2, 3, "4"],
+  "null": null,
+  "dict": {
+    "name": "I'm dick",
+    "list": [
+      "Stringer tinker bell",
+      2.718281828459045,
+      true,
+      false,
+      null,
+      { "list": ["Funny little bulks", 2333], "blanks": "" }
+    ],
+    "object": { "AMD YES": "YES YES!!!", "INTEL": "SUCKS!!!" },
+    "中文": "博大精深！"
+  }
+}
+`
+
+	var data map[string]interface{}
+	if err := json.Unmarshal([]byte(exa1), &data); err != nil {
+		panic(err)
+	}
+
+	for k, v := range data {
+		switch vv := v.(type) {
+		case nil:
+			fmt.Printf("Type Nil %T, %v: %v\n", vv, k, vv)
+		case string:
+			fmt.Printf("Type String %T, %v: %v\n", vv, k, vv)
+		case float64:
+			fmt.Printf("Type Float %T, %v: %v\n", vv, k, vv)
+		case int:
+			fmt.Printf("Type Int %T, %v: %v\n", vv, k, vv)
+		case bool:
+			fmt.Printf("Type Bool %T, %v: %v\n", vv, k, vv)
+		case []interface{}:
+			fmt.Printf("Type []interface{} %T, %v: %v\n", vv, k, vv)
+		case map[string]interface{}:
+			fmt.Printf("Type map[string]Interface{} %T, %v: %v\n", vv, k, vv)
+		default:
+			fmt.Printf("Type Interface %T, %v: %v\n", vv, k, vv)
+		}
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: Type Bool bool, bool: false
+: Type []interface{} []interface {}, list: [1 2 3 4]
+: Type Nil <nil>, null: <nil>
+: Type map[string]Interface{} map[string]interface {}, dict: map[list:[Stringer tinker bell 2.718281828459045 true false <nil> map[blanks: list:[Funny little bulks 2333]]] name:I'm dick object:map[AMD YES:YES YES!!! INTEL:SUCKS!!!] 中文:博大精深！]
+: Type String string, name: I'm JSON
+: Type String string, string: This is a string
+: Type Float float64, int: 1
+: Type Float float64, float: 3.141592653589757
+
+
+* Reference
+
+1. [[https://blog.golang.org/json][JSON and Go - The Go Blog]]

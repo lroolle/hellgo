@@ -1,0 +1,203 @@
+#+TITLE: Strings, bytes, runes and characters in Go
+#+DATE: 2020-08-17 19:00
+
+#+EXPORT_FILE_NAME: go-pkg-strings
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
+
+Package strings implements simple functions to manipulate UTF-8 encoded strings.
+
+
+#+begin_quote
+-> [[https://blog.golang.org/strings][Strings, bytes, runes and characters in Go - The Go Blog]]
+-> [[https://golang.org/pkg/strings/][pkg/strings - The Go Programming Language Doc]]
+-> [[https://golang.org/src/strings/][src/strings/ - The Go Programming Language Src]]
+#+end_quote
+
+* What is a string?
+
+In Go, a string is in effect a *read-only* /slice of bytes/. If you're at all
+uncertain about what a slice of bytes is or how it works, please read the
+previous blog post; we'll assume here that you have.
+
+It's important to state right up front that a string holds arbitrary bytes. It
+is not required to hold Unicode text, UTF-8 text, or any other predefined
+format. As far as the content of a string is concerned, it is exactly equivalent
+to a slice of bytes.
+
+Here is a string literal (more about those soon) that uses the \xNN notation to
+define a string constant holding some peculiar byte values. (Of course, bytes
+range from hexadecimal values 00 through FF, inclusive.)
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+const sample = "\xbd\xb2\x3d\xbc\x20\xe2\x8c\x98"
+
+func main() {
+    const sample = "\xbd\xb2\x3d\xbc\x20\xe2\x8c\x98"
+
+    // fmt.Println("Println:")
+    // fmt.Println(sample)
+
+    fmt.Println("Byte loop:")
+    for i := 0; i < len(sample); i++ {
+        fmt.Printf("%x ", sample[i])
+    }
+    fmt.Printf("\n")
+
+    fmt.Println("Printf with %x:")
+    fmt.Printf("%x\n", sample)
+
+    fmt.Println("Printf with % x:")
+    fmt.Printf("% x\n", sample)
+
+    fmt.Println("Printf with %q:")
+    fmt.Printf("%q\n", sample)
+
+    fmt.Println("Printf with %+q:")
+    fmt.Printf("%+q\n", sample)
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Byte loop:
+bd b2 3d bc 20 e2 8c 98
+Printf with %x:
+bdb23dbc20e28c98
+Printf with % x:
+bd b2 3d bc 20 e2 8c 98
+Printf with %q:
+"\xbd\xb2=\xbc ⌘"
+Printf with %+q:
+"\xbd\xb2=\xbc \u2318"
+#+end_example
+
+
+* UTF-8 and string literals
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	const placeOfInterest = `⌘`
+
+	fmt.Printf("plain string: ")
+	fmt.Printf("%s", placeOfInterest)
+	fmt.Printf("\n")
+
+	fmt.Printf("quoted string: ")
+	fmt.Printf("%+q", placeOfInterest)
+	fmt.Printf("\n")
+
+	fmt.Printf("hex bytes: ")
+	for i := 0; i < len(placeOfInterest); i++ {
+		fmt.Printf("%x ", placeOfInterest[i])
+	}
+	fmt.Printf("\n")
+}
+#+END_SRC
+
+#+RESULTS:
+: plain string: ⌘
+: quoted string: "\u2318"
+: hex bytes: e2 8c 98
+
+which reminds us that the Unicode character value U+2318, the "Place of
+Interest" symbol ⌘, *is represented by the bytes ~e2 8c 98~ *, and that those
+bytes are the *UTF-8 encoding* of the hexadecimal value 2318.
+
+The simple fact is: it was created when the source code was written.
+
+To summarize, strings can contain *arbitrary bytes*, but when constructed from
+string literals, those bytes are (/almost always/) UTF-8.
+
+* Code points, characters, and runes
+
+The Unicode standard uses the term "code point" to refer to the item represented
+by a single value. The code point U+2318, with hexadecimal value 2318,
+represents the symbol ⌘. (For lots more information about that code point, see
+its Unicode page.)
+
+"Code point" is a bit of a mouthful, so Go introduces a shorter term for the
+concept: ~rune~. The term appears in the libraries and source code, and means
+exactly the same as "code point", with one interesting addition.
+
+To summarize, here are the salient points:
+
+- Go source code is always UTF-8.
+- A string holds arbitrary bytes.
+- A string literal, absent byte-level escapes, always holds valid UTF-8 sequences.
+- Those sequences represent Unicode code points, called runes.
+- No guarantee is made in Go that characters in strings are normalized.
+
+
+* Range Loops
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+const why = "你为什么活着？"
+
+func main() {
+	for index, runeValue := range why {
+		fmt.Printf("%#U starts at byte position %d\n", runeValue, index)
+	}
+	b := []byte(why)
+	fmt.Println(string(b))
+
+	for i := 0; i < len(why); i++ {
+		fmt.Printf("%#v ", why[i])
+	}
+}
+#+END_SRC
+
+#+RESULTS:
+: U+4F60 '你' starts at byte position 0
+: U+4E3A '为' starts at byte position 3
+: U+4EC0 '什' starts at byte position 6
+: U+4E48 '么' starts at byte position 9
+: U+6D3B '活' starts at byte position 12
+: U+7740 '着' starts at byte position 15
+: U+FF1F '？' starts at byte position 18
+: 你为什么活着？
+: 0xe4 0xbd 0xa0 0xe4 0xb8 0xba 0xe4 0xbb 0x80 0xe4 0xb9 0x88 0xe6 0xb4 0xbb 0xe7 0x9d 0x80 0xef 0xbc 0x9f
+
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "strings"
+
+func main() {
+	s := "We went to eat at multiple cafe"
+	cafe := "cafe"
+	if p := strings.Index(s, cafe); p != -1 {
+		p += len(cafe)
+		s = s[:p] + "s" + s[p:]
+	}
+	fmt.Println(s)
+}
+#+END_SRC
+
+#+RESULTS:
+: We went to eat at multiple cafes
+
+
+#+BEGIN_SRC go :exports both :imports '("fmt" "strings")
+import "golang.org/x/text/unicode/norm"
+
+func main() {
+	s := "We went to eat at multiple cafe\u0301"
+	cafe := "cafe"
+	if p := strings.Index(s, cafe); p != -1 {
+		p += len(cafe)
+		if bp := norm.FirstBoundary(s[p:]); bp > 0 {
+			p += bp
+		}
+		s = s[:p] + "s" + s[p:]
+	}
+	fmt.Println(s)
+}
+#+END_SRC
+
+#+RESULTS:

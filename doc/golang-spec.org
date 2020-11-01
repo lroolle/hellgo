@@ -1,5 +1,15 @@
 #+TITLE: The Go Programming Language Specification
 #+STARTUP: nofold
+#+DATE: 2020-06-07
+#+TOC: headlines 2
+
+#+EXPORT_FILE_NAME: golang-spec
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
 
 
 * Keywords
@@ -11,7 +21,6 @@ chan         else         goto         package      switch
 const        fallthrough  if           range        type
 continue     for          import       return       var
 #+END_SRC
-
 
 * Types
 ** Boolean
@@ -192,6 +201,14 @@ func main() {
 }
 #+END_SRC
 
+#+RESULTS:
+: as: [3 5 7] cap(as): 5, ass: [11 13] cap(ass): 2
+: as: [3 4 7] cap(as): 5, ass: [11 114 115 116 117 118 119] cap(ass): 8, a: [2 3 4 7 11 114]
+: array
+: slice
+: [[1 2 3] [4 5 6]]
+: [2 3] 2
+
 ** Struct
 A struct is a sequence of named elements, called fields, each of which has a name and a type.
 Within a struct, non-blank field names must be unique.
@@ -252,13 +269,25 @@ type Bad2 interface {
 ** Map
 A map is an unordered group of elements of one type, called the element type,
 indexed by a set of unique keys of another type, called the key type.
-#+BEGIN_SRC go
-make(map[string]int, 100)
+#+BEGIN_SRC go :imports "fmt"
+import "strconv"
+type T struct{}
 
-map[string]int
-map[*T]struct{ x, y float64 }
-map[string]interface{}
+func main() {
+	m100 := make(map[string]int, 100)
+	for i := 0; i < 100; i++ {
+		m100[strconv.Itoa(i)] = i
+    }
+
+	mstring := map[string]int{"string": 1}
+	mstruct := map[*T]struct{ x, y float64 }{}
+	minterface := map[string]interface{}{}
+	fmt.Printf("len(m100): %d, mstring: %v, mstruct: %v, minterface: %v\n", len(m100), mstring, mstruct, minterface)
+}
 #+END_SRC
+
+#+RESULTS:
+: len(m100): 100, mstring: map[string:1], mstruct: map[], minterface: map[]
 
 ** Channel
 A channel provides a mechanism for concurrently executing functions to
@@ -273,7 +302,6 @@ chan<- float64  // can only be used to send float64s
 make(chan int, 100) // cap() = 100
 
 #+END_SRC
-
 
 * Declarations and scope ¶
 ** Constant
@@ -336,7 +364,6 @@ const (
 )
 #+END_SRC
 
-
 ** Type declarations
 
 #+BEGIN_SRC go
@@ -363,7 +390,6 @@ type Block interface {
 	Decrypt(src, dst []byte)
 }
 #+END_SRC
-
 
 ** Variable declarations
 #+BEGIN_SRC go
@@ -401,7 +427,6 @@ func IndexRune(s string, r rune) int {
 }
 #+END_SRC
 
-
 ** Method declarations
 A method is a function with a receiver. A method declaration binds an
 identifier, the method name, to a method, and associates the method with the
@@ -418,8 +443,7 @@ func (p *Point) Scale(factor float64) {
 }
 #+END_SRC
 
-
-* ~make~ & ~new~
+** ~make~ & ~new~
 :PROPERTIES:
 :ID:       351d7f27-e8b5-481e-99df-c089c61e9cc7
 :END:
@@ -526,6 +550,106 @@ func main() {
 : p: &{{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
 : v: {{0 0} {[] 0 0}} lock {0 0} buffer: {[] 0 0}
 
+* Expressions
+** Index expressions
+
+A primary expression of the form
+#+BEGIN_SRC go :exports both :imports "fmt"
+a[x]
+#+END_SRC
+denotes /the element of the array/, pointer to ~array~, ~slice~, ~string~ or
+~map~ a indexed by ~x~. The value ~x~ is called the index or map key, respectively.
+The following rules apply:
+
+1. If a is ~not a map~:
+   a. the index x must be *of integer type or an untyped constant*
+   b. *constant index* must be *non-negative* and [[https://golang.org/ref/spec#Representability][representable]] by a value of type ~int~
+   c. a constant index that is untyped is given type ~int~
+   d. the index x is in range if 0 <= x < len(a), otherwise it is out of range
+
+2. For a of ~array type~ A:
+   a. a constant index must be in range
+   b. if x is out of range at run time, a run-time panic occurs
+   c. a[x] is the array element at index x and the type of a[x] is the element type of A
+
+3. For a of ~pointer to array type~:
+   a. a[x] is shorthand for (*a)[x]
+
+    #+BEGIN_SRC go :exports both :imports "fmt"
+    import "reflect"
+
+    func main() {
+        var a [2]int
+        var pa *[2]int = &a
+        fmt.Printf("Type a: %s, a[1]: %#v, pa[1]: %#v\n", reflect.ValueOf(a).Kind(), a[1], pa[1])
+        var s = make([]int, 2)
+        var ps *[]int = &s
+        fmt.Printf("Type s: %s, s[1]: %#v, (*ps)[1]: %#v\n", reflect.ValueOf(s).Kind(), s[1], (*ps)[1])
+    }
+    #+END_SRC
+
+    #+RESULTS:
+
+    NOTE: for a of ~pointer to slice type~, the a[x] shorthand is invalid.
+    FOR: 1). Pointer does not support index;
+    2). Pointer to a slice is very rare and slice internal is already type of pointer to array.
+
+    #+begin_quote
+    // invalid operation: ps[1] (type *[]int does not support indexing)
+    -> [[https://stackoverflow.com/questions/38013922/slicing-a-slice-pointer-passed-as-argument][go - Slicing a slice pointer passed as argument - Stack Overflow]]
+    #+end_quote
+
+4. For a of ~slice type~ S:
+   a. if x is out of range at run time, a run-time panic occurs
+   b. a[x] is the slice element at index x and the type of a[x] is the element type of S
+5. For a of ~string type~:
+   a. a constant index must be in range if the string a is also constant
+   b. if x is out of range at run time, a run-time panic occurs
+   c. a[x] is the non-constant byte value at index x and the *type of a[x] is byte*
+   d. a[x] may not be assigned to(*Not Modifiable*)
+6. For a of ~map type~ M:
+   a. x's type must be assignable to the key type of M
+   b. if the map contains an entry with key x, a[x] is the map element with key x
+      and the type of a[x] is the element type of M
+   c. if the map is nil or does not contain such an entry, a[x] is the zero value for the element type of M
+   #+BEGIN_SRC go :exports both :imports "fmt"
+   func main() {
+       m := make(map[string]bool)
+       m["y"] = true
+       fmt.Printf("m['x']: %v\n", m["x"])
+       if v, ok := m["y"]; ok {
+           fmt.Printf("m['y'] is Ok: %v\n", v)
+       }
+   }
+   #+END_SRC
+
+   #+RESULTS:
+   : m['x']: false
+   : m['y'] is Ok: true
+
+Otherwise a[x] is illegal.
+
+An index expression on a map a of type map[K]V used in an assignment or initialization of the special form
+
+v, ok = a[x]
+v, ok := a[x]
+var v, ok = a[x]
+yields an additional untyped boolean value. The value of ok is true if the key x is present in the map, and false otherwise.
+
+Assigning to an element of a nil map causes a run-time panic.
+* Statements
+** Select statements
+
+Execution of a "select" statement proceeds in several steps:
+
+1. For all the cases in the statement, the channel operands of receive operations and the channel and right-hand-side expressions of send statements are evaluated exactly once, in source order, upon entering the "select" statement. The result is a set of channels to receive from or send to, and the corresponding values to send. Any side effects in that evaluation will occur irrespective of which (if any) communication operation is selected to proceed. Expressions on the left-hand side of a RecvStmt with a short variable declaration or assignment are not yet evaluated.
+2. If one or more of the communications can proceed, a single one that can proceed is chosen via *a uniform pseudo-random* selection. Otherwise, if there is a default case, that case is chosen. If there is no default case, the "select" statement blocks until at least one of the communications can proceed.
+3. Unless the selected case is the default case, the respective communication operation is executed.
+4. If the selected case is a RecvStmt with a short variable declaration or an assignment, the left-hand side expressions are evaluated and the received value (or values) are assigned.
+5. The statement list of the selected case is executed.
+
+Since communication on nil channels can never proceed, *a select with only nil
+channels and no default case blocks forever*.
 
 
 * References

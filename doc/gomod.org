@@ -1,10 +1,20 @@
 #+TITLE: Golang Gopath Gomod
 
+#+EXPORT_FILE_NAME: go-interview
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
+
 * [[https://blog.golang.org/using-go-modules][Using Go Modules - The Go Blog]]
 
 #+begin_quote
-Go 1.11和1.12实现了对包管理的初步支持，Go的新依赖管理系统使依赖版本信息明确且易
-于管理
+Go 1.11 和 1.12 实现了对包管理的初步支持，Go 的新依赖管理系统使依赖版本信息明确且易于管理
+
+-> [[https://blog.golang.org/using-go-modules][Using Go Modules - The Go Blog]]
 #+end_quote
 
 - 原包管理方式
@@ -24,12 +34,19 @@ Go 1.11和1.12实现了对包管理的初步支持，Go的新依赖管理系统�
 
 * Prerequisite 准备工作
 
-- 升级 golang 版本到 > 1.12
-- 添加环境变量 ~GO111MODULE~ 为 ~on~ 或者 ~auto~
+- 升级 golang 版本到 > 1.12;
+- 添加环境变量 ~GO111MODULE~ 为 ~on~ 或者 ~auto~;
  
- #+BEGIN_SRC sh
- GO111MODULE=auto
- #+END_SRC
+#+BEGIN_SRC sh
+go env -w GO111MODULE=on # or go env -w GO111MODULE=auto
+#+END_SRC
+
+- ~GO111MODULE~:
+  - ~on~: default in go 1.13 will *force using Go modules* even if the project is in your GOPATH. Requires go.mod to work.
+  - ~off~: forces Go to behave the old GOPATH way, even outside of GOPATH.
+  - ~auto~: is the default mode in go 1.11. In this mode, Go will behave
+    - GO111MODULE=on when you are outside of GOPATH,
+    - GO111MODULE=off when you are inside the GOPATH even if a go.mod is present.
 
 * Create a New ~hello~ Module by Example
 
@@ -442,11 +459,10 @@ like Quux is a top-level identifier in the current package or in an imported pac
 
 
 
-
 * References
-
 - [[https://juejin.im/post/5c9c8c4fe51d450bc9547ba1][拜拜了，GOPATH君！新版本Golang的包管理入门教程 - 掘金]]
 - [[https://blog.golang.org/using-go-modules][Using Go Modules - The Go Blog]]
+- [[https://blog.golang.org/modules2019][Go Modules in 2019 - The Go Blog]]
 - [[https://blog.golang.org/publishing-go-modules][Publishing Go Modules - The Go Blog]]
 - [[https://golang.org/doc/code.html#PackagePaths][How to Write Go Code - The Go Programming Language]]
 - [[https://github.com/golang/go/wiki][Home · golang/go Wiki · GitHub]]

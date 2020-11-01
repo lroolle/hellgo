@@ -1,64 +1,32 @@
 #+TITLE: Golang Deepdive
 #+AUTHOR: Eric dive course by Ccmouse
-#+OPTIONS: toc:nil
+
+#+EXPORT_FILE_NAME: golang-deepdive
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
 
 * Chapter 00: Index 概览
-** [[file:../src/deepdivego][Source Code: deepdivego]]
-** [[*Chapter 01: Basic Grammar 基本语法][Chapter 01: Basic Grammar 基本语法]]
-- [[*Var 赋值][Var 赋值]]
-- [[*Base Types 内建变量类型][Base Types 内建变量类型]]
-- 选择
-- 循环
-- 指针
-
-** [[*Chapter 02: Container 内建容器][Chapter 02: Container 内建容器]]
-- Array
-- Slice
-- Map
-- [[*String Rune 字符串处理][String Rune 字符串处理]]
-
-** 面向*接口*
-- 结构体
-- Duck Typing 概念
-- 组合的思想
- 
-** 函数式编程
-
-- 闭包
-- 例题
-
-** 工程化
-
-- 资源管理
-- 错误处理
-- 测试和文档
-- 性能调优
-
-** 并发编程 :FOCUS:
-
-- goroutine
-- channel
-- 理解调度器
-- 多样的例题
-
-** 实战项目
-
-- 分布式爬虫：相亲网站资料
 
 * Chapter 01: Basic Grammar 基本语法
 ** Var 赋值
 
 #+BEGIN_SRC go :exports both
 package main
+
 // Golang 变量都是包变量，无全局变量
 import "fmt"
 
 var (
-	i int = 10000000000
+	i int    = 10000000000
 	s string = "Go Fuck"
+
 // i := 0 // Syntax error
 )
-
 
 func variableZeroValue() {
 	var a int
@@ -68,7 +36,7 @@ func variableZeroValue() {
 
 func variableInitValue() {
 	var a, b int = 3, 4
-	var s string  = "ABC"
+	var s string = "ABC"
 	fmt.Println(a, b, s)
 }
 
@@ -86,19 +54,7 @@ func main() {
 }
 #+END_SRC
 
-#+RESULTS:
-: Deep Dive
-: 0 ""
-: 3 4 ABC
-: 6 7 CDE
-: 10000000000 Go Fuck
-
 ** Base Types 内建变量类型
-:PROPERTIES:
-:ID:  474171a9-5982-40af-80dc-a75dfd1448dd
-:DIR: img/
-:END:
-
 - bool string
 - (u)int, (u)int8, (u)int16, (u)int32, (u)int64, uintptr
 - byte rune
@@ -106,7 +62,12 @@ func main() {
 
 *** Complex 复数
 
-i = 根号-1
+#+BEGIN_LaTeX
+\begin{equation}
+i=\sqrt{-1}
+\end{equation}
+#+END_LaTeX
+
 
 #+BEGIN_SRC go :exports both
 import (
@@ -263,7 +224,6 @@ func main() {
 
 - 返回值尽量写明确
 - 多值返回一般返回 Err
-
 #+BEGIN_SRC go :exports both
 return 0, fmt.Errorf("Error ", ...)
 #+END_SRC
@@ -367,7 +327,6 @@ func swap(a, b int) (int, int){
 }
 #+END_SRC
 
-
 * Chapter 02: Container 内建容器
 ** Array 数组
 
@@ -439,7 +398,7 @@ Pointer Arrary in func: make modify
 [1 2 1000000]
 #+end_example
 
-** Slice 切片 :ATTACH:
+** Slice 切片
 
 #+BEGIN_SRC go :exports both
 import "fmt"
@@ -626,7 +585,6 @@ Ch is a rune, i=4, ch=串
   notes @[[file:../src/strings/strings.org][strings.org]]
 
 * Chapter 03: Struct 面向“对象”
-
 ** Strut Method 结构体和方法 :ATTENTION:
 
 - Go 仅支持封装，不支持继承和多态
@@ -809,7 +767,6 @@ func main() {
 - 可以同时放在不同目录下;
 
 * Chapter 04: Interface 面向“接口”
-
 ** Duck typing 的概念
 
 - Python 中的 Duck typing
@@ -828,7 +785,7 @@ string download(const R& retriever) {
 #+END_SRC
 
 - JAVA 中的类似代码
-#+BEGIN_SRC java
+#+BEGIN_SRC
 <R extends Retriever>
 String download(R r) {
     return r.get("golang.org")
@@ -978,11 +935,7 @@ func main() {
 - 不可变性：不能有状态，只有常量和函数
 - 函数只能有一个参数
 
-** 闭包 :ATTACH:
-:PROPERTIES:
-:ID:       64192b32-6927-4624-9927-e1d26e72bed0
-:DIR:      img/
-:END:
+** 闭包
 
 #+BEGIN_SRC go :exports both
 import "fmt"
@@ -1099,7 +1052,7 @@ auto adder() {
 
 *** Java 中的闭包
 
-#+BEGIN_SRC java :exports both
+#+BEGIN_SRC :exports both
 Function<Integer, Integer> adder() {
     final Holder<Integer> sum = new Holder<>(0);
     return (Integer value) -> {
@@ -1247,7 +1200,6 @@ func main() {
 : 5
 
 * Chapter 06: 错误处理和资源管理
-
 - 打开文件也要确保关闭；
 - 打开连接也要保证关闭；
 
@@ -1344,12 +1296,9 @@ if err != nil {
 - 意料之外的，实在没办法的使用 panic，要尽量去避免；
 
 * Chapter 07: Debuging sucks & Testing rocks 测试及性能调优
-
 ** 传统测试 vs 表格驱动测试
-
-
 *** 传统测试
-#+BEGIN_SRC java
+#+BEGIN_SRC
 @Test public void testAdd(){
     assertEqual(3, add(1, 2))
     assertEqual(...)
@@ -1382,10 +1331,27 @@ for _, test := range tests {
 - golang 语法可以使我们更容易实践表格驱动测试
 
 ** ~testing.T~: For test
-- src @[[file:../src/deepdivego/testing][file:deepdivego/testing]]
+-> src @[[file:../src/deepdivego/testing][file:deepdivego/testing]]
+
+- Test Coverage
+
+#+BEGIN_SRC sh
+go test . -coverprofile=cover.out
+#+END_SRC
+
+#+BEGIN_SRC sh :exports both
+go tool cover -func=cover.out                                                                                                 1 ↵
+go tool cover -func=cover.out                                                                                                 1 ↵
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+github.com/lroolle/deepdivego/errhandle/filelistserver/web.go:19:       errWrapper      100.0%
+github.com/lroolle/deepdivego/errhandle/filelistserver/web.go:53:       main            0.0%
+total:                                                                  (statements)    81.0%
+#+END_EXAMPLE
 
 ** ~testing.B~: For benchmark
--> src @[[file:../src/deepdivego/testing][file:deepdivego/testing]]
+-> src @[[file:../src/deepdivego/testing][deepdivego/testing/substring/longestsubstring_test.go]]
 
 - test bench
 
@@ -1394,9 +1360,11 @@ go test -bench .
 #+END_SRC
 
 - cpuprofile
+#+BEGIN_SRC  :exports both
+go test -bench . -cpuprofile cpu.out
+#+END_SRC
 
 #+BEGIN_EXAMPLE
-go test -bench . -cpuprofile cpu.out
 goos: darwin
 goarch: amd64
 pkg: github.com/lroolle/deepdivego/testing/substring
@@ -1406,8 +1374,11 @@ ok      github.com/lroolle/deepdivego/testing/substring 2.988s
 #+END_EXAMPLE
 
 - go tool pprof cpu.out
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC sh :exports both
 go tool pprof cpu.out
+#+END_SRC
+
+#+BEGIN_EXAMPLE
 Type: cpu
 Time: Jul 29, 2020 at 4:51am (CST)
 Duration: 1.97s, Total samples = 1.65s (83.81%)
@@ -1415,5 +1386,389 @@ Entering interactive mode (type "help" for commands, "o" for options)
 (pprof) web
 (pprof)
 #+END_EXAMPLE
-**
 
+** 测试 Http Server
+-> src @[[file:../src/deepdivego/errhandle/filelistserver/web_test.go][filelistserver/web_test.go]]
+
+** 生成文档以及示例代码
+
+- ~go doc~ 命令
+
+#+BEGIN_SRC sh
+go doc
+#+END_SRC
+
+#+BEGIN_EXAMPLE
+package queue // import "interface/queue"
+type Queue []interface{}
+#+END_EXAMPLE
+
+- ~godoc~ 命令
+
+#+BEGIN_SRC sh
+godoc -http :6060
+#+END_SRC
+
+- Write Example in tests
+
+  - Golang 可以在 tests 中加入 Example
+  - 同时 ~Output:~ 也会作为测试 Case
+
+-> src @[[file:../src/deepdivego/interface/queue/queue_test.go][interface/queue/queue_test.go]]
+#+BEGIN_SRC go :exports both :imports "fmt"
+package queue
+
+import "fmt"
+
+func ExampleQueue_Pop() {
+	var q = Queue{1}
+	q.Push(2)
+	q.Push(3)
+	fmt.Println(q.Pop())
+	fmt.Println(q.Pop())
+	fmt.Println(q.Empty())
+	fmt.Println(q.Pop())
+	fmt.Println(q.Empty())
+
+	// Output:
+	// 3
+	// 2
+	// false
+	// 1
+	// true
+}
+#+END_SRC
+
+** 测试总结
+- 结构体表格驱动测试；
+- 代码覆盖率；
+- 性能优化；
+- 测试 HTTP Server；
+- 如何写文档以及示例代码；
+* Chapter 08: Goroutine 并发编程
+** goroutine
+
+- Hello from go routine
+ 
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "time"
+func main() {
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			for {
+				fmt.Printf("Hello from goroutine %d\n", i)
+				break
+			}
+		}(i)
+		// 这里 i 如果在里面引用不安全，在这里传入；
+	}
+	time.Sleep(time.Millisecond)
+}
+#+END_SRC
+
+// 这里输出不定，main 函数退出后，所有 goroutine 也终止了
+#+RESULTS:
+#+begin_example
+Hello from goroutine 1
+Hello from goroutine 0
+Hello from goroutine 9
+Hello from goroutine 6
+Hello from goroutine 8
+Hello from goroutine 5
+Hello from goroutine 7
+Hello from goroutine 2
+Hello from goroutine 4
+Hello from goroutine 3
+#+end_example
+
+- 协程 Coroutine
+  - 轻量级"线程"；
+  - *非抢占式*多任务处理，由协程主动交出控制权；
+  - 编译器/解释器/虚拟机层面的多任务（ /非操作系统层面/ ）；
+  - 多个协程可能在一个或者多个线程上运行；
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"runtime"
+	"time"
+)
+
+func main() {
+	var a [10]int
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			for {
+				a[i]++
+				runtime.Gosched()
+			}
+		}(i)
+	}
+	runtime.GOMAXPROCS(1)
+	time.Sleep(time.Millisecond)
+	fmt.Println(a)
+}
+#+END_SRC
+
+#+RESULTS:
+: [685 596 566 613 753 613 561 601 692 628]
+
+- 切换: ~Gosched~
+
+  - runtime.GOMAXPROCS:
+    #+begin_quote
+    By default, Go programs run with GOMAXPROCS set to the number of cores
+    available; in prior releases it defaulted to 1.
+    #+end_quote
+
+  - Gosched:
+    #+begin_quote
+    when execution context in one goroutine reaches Gosched call, the scheduler
+    is instructed to switch the execution to another goroutine.
+    #+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import (
+	"runtime"
+	"time"
+)
+
+func say(name, s string) {
+	for i := 0; i < 5; i++ {
+		runtime.Gosched()
+		fmt.Printf("I'm %s(NO.%d) waving: %s\n", name, i, s)
+	}
+}
+
+func main() {
+	runtime.GOMAXPROCS(1)
+	go say("Sayer01", "world")
+	say("Sayer02", "hello")
+	time.Sleep(time.Second)
+}
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+I'm Sayer02(NO.0) waving: hello
+I'm Sayer01(NO.0) waving: world
+I'm Sayer02(NO.1) waving: hello
+I'm Sayer01(NO.1) waving: world
+I'm Sayer02(NO.2) waving: hello
+I'm Sayer01(NO.2) waving: world
+I'm Sayer02(NO.3) waving: hello
+I'm Sayer01(NO.3) waving: world
+I'm Sayer02(NO.4) waving: hello
+I'm Sayer01(NO.4) waving: world
+#+end_example
+
+NOTE: 如果 ~GOMAXPROCS > 1~，这里的两个 goroutine(main 和 say) 会在不同线程执行，
+得到的结果可能就是不确定的。
+
+-> Refer to @[[https://stackoverflow.com/questions/13107958/what-exactly-does-runtime-gosched-do/13108469][concurrency - What exactly does runtime.Gosched do? - Stack Overflow]]
+
+- ~cooperative multitasking~ vs ~preemptive multitasking~
+
+
+- Debug: ~go run -race~
+
+** golang 的调度器
+
+*** Coroutines
+
+#+begin_quote
+Subroutines are special cases of more general program components, called /coroutines/.
+In contrast to the unsymmetric.
+
+子程序是协程的一个特例。
+#+end_quote
+
+/by Donnald Knuth 《The Art of Programming Vol-1》/
+
+- 线程 vs 协程
+
+  #+BEGIN_EXAMPLE
+  普通函数: main --> DoWork     子程序执行在某个线程中，DoWork 结束，main 执行下一条语句；
+      协程:  main <--> DoWork   协程中可以与 main 函数互相通信，可能在一个线程里，也可能多个。
+  #+END_EXAMPLE
+
+*** 其他语言协程的支持
+
+- Cpp: Boost.Coroutine
+- Java: null(三方 JVM 可能有相应支持)
+- Python:
+  - 早期版本可以通过 yield
+  - 3.5 之后加入了 ~async def~ / ~await~ 等关键字(需要定义函数为协程，Golang 通过 ~go~ 关键字不需要这么定义)
+
+*** goroutine
+[[../img/_20200731_192726screenshot.png]]
+
+*** goroutine 可能的切换点
+
+- I/O, select
+- channel
+- lock
+- runtime.Gosched
+- 函数调用（有时）
+
+  #+begin_quote
+  不能保证切换也不能保证不切换；
+  #+end_quote
+
+* Chapter 09: Channel
+** Definition
+
+/-> from [[https://tour.golang.org/concurrency/2][A Tour of Go: Channel]]/
+
+Channels are a typed conduit through which you can send and receive values with
+the channel operator, ~<-~.
+
+By default, sends and receives block until the other side is ready. This allows
+goroutines to synchronize without explicit locks or condition variables.
+
+#+BEGIN_EXAMPLE
+ch <- v    // Send v to channel ch.
+v := <-ch  // Receive from ch, and assign value to v.
+#+END_EXAMPLE
+/(The data flows in the direction of the arrow.)/
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func sum(s []int, c chan int) {
+	sum := 0
+	for _, v := range s {
+		sum += v
+	}
+	c <- sum // send sum to c
+}
+
+func main() {
+	s := []int{7, 2, 8, -9, 4, 0}
+
+	c := make(chan int)
+	go sum(s[:len(s)/2], c)
+	go sum(s[len(s)/2:], c)
+	x, y := <-c, <-c // receive from c
+
+	fmt.Println(x, y, x+y)
+}
+#+END_SRC
+
+#+RESULTS:
+: -5 17 12
+
+** Buffered VS Unbuffered Channels
+
+An /unbuffered channel/(*Capacity 0*) is a channel that needs a receiver as soon
+as a message is emitted to the channel.
+
+If the channel is unbuffered, the sender blocks until the receiver has received
+the value
+
+#+BEGIN_SRC go :exports both :imports '("fmt" )
+func main() {
+	unbufferedc := make(chan bool)
+	done := make(chan bool)
+
+	go func(c chan bool) {
+		c <- false
+	}(unbufferedc)
+
+	go func(c chan bool) {
+		// This will block until the unbufferedc received a false
+		// from the above goroutine
+		fmt.Printf("%t from Unbuffered Channel\n", <-c)
+		done <- true
+	}(unbufferedc)
+
+	bufferedc := make(chan bool, 1)
+	bufferedc <- true
+	fmt.Printf("%t from Buffered Channel\n", <-bufferedc)
+	<-done // To block the main goroutine until from unbuffered received value.
+}
+#+END_SRC
+
+#+RESULTS:
+: true from Buffered Channel
+: false from Unbuffered Channel
+
+Channels can be buffered. Provide the buffer length as the second argument to
+make to initialize a buffered channel:
+
+#+BEGIN_EXAMPLE
+ch := make(chan int, 100)
+#+END_EXAMPLE
+
+Sends to a /buffered channel/ block only when the buffer is full. Receives block
+when the buffer is empty.
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	ch := make(chan int, 3)
+	ch <- 1
+	ch <- 2
+	ch <- 3
+	fmt.Println(<-ch)
+	fmt.Println(<-ch)
+	fmt.Println(<-ch)
+}
+#+END_SRC
+
+#+RESULTS: : 1 : 2
+: 3
+
+** Channel wait/close
+   如何确定 goroutine 执行完了？
+
+** sync.WaitGroup
+** 使用 Channel 遍历树
+#+BEGIN_SRC go :exports both :imports "fmt"
+func (node *treeNode) traverseWithChannel() chan *treeNode {
+	out := make(chan *treeNode)
+	go func() {
+		node.traverseWithFunc(func(node *treeNode) {
+			out <- node
+		})
+		close(out)
+	}()
+	return out
+}
+#+END_SRC
+
+** 使用 select 调度（CSP）
+
+通过通信共享内存
+
+** 传统同步机制
+
+- WaitGroup
+- Mutex(内部也是通过 channel 来实现的)
+- Cond
+
+* Chapter 10: Standard Libraries 一些标准库
+** HTTP
+
+- pprof
+#+BEGIN_SRC go :exports both :imports "fmt"
+import _ "net/http/pprof"
+#+END_SRC
+
+localhost:8888/debug/pprof/
+
+#+BEGIN_SRC
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+#+END_SRC
+
+** Others
+
+- bufio
+- encoding/json
+- time
+- log
+- regexp
+- strings
+- math
+- rand
+
+*** 两种方法看 Doc
+
+1. godoc -http :6060
+2. go doc

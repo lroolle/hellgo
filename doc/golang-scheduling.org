@@ -1,0 +1,692 @@
+#+TITLE: Scheduling in GO
+#+DATE: 2020-08-09
+
+#+EXPORT_FILE_NAME: scheduling-in-go
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang goroutine schedule os thread
+
+
+#+begin_quote
+It’s important to have a general and representative understanding of how both
+the OS and Go schedulers work to design your multithreaded software correctly.
+
+/- by The Author: [[https://github.com/ardan-bkennedy][ardan-bkennedy (William Kennedy) · GitHub]]/
+#+end_quote
+
+#+begin_quote
+Original Posts:
+- [[https://www.ardanlabs.com/blog/2018/08/scheduling-in-go-part1.html][Scheduling In Go : Part I - OS Scheduler]]
+- [[https://www.ardanlabs.com/blog/2018/08/scheduling-in-go-part2.html][Scheduling In Go : Part II - Go Scheduler]]
+- [[https://www.ardanlabs.com/blog/2018/12/scheduling-in-go-part3.html][Scheduling In Go : Part III - Concurrency]]
+#+end_quote
+
+
+* Part I - Os Scheduler
+
+** What is Executing?
+1. Your program is just a series of /machine instructions/ that need to be
+   executed one after the other sequentially.
+2. *Thread* is an /OS concept/, It’s the job of the Thread to account for and
+   sequentially execute the set of instructions it’s assigned.
+3. Thread is so called by the author: “a path of execution”
+4. A Thread in linux is just a ~task_struct~, which means the real executing
+   job is done by the CPU.
+
+** Executing Instructions
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	fmt.Println("panic")
+	example(make([]string, 2, 4), "hello", 10)
+}
+
+func example(slice []string, str string, i int) {
+	panic("Want stack trace")
+}
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_EXAMPLE
+panic: Want stack trace
+
+goroutine 1 [running]:
+main.example(...)
+	/Users/eric/G/w/golangtour/doc/examples/schedulingingo/ExecutingiInstructions/example.go:8
+main.main()
+	/Users/eric/G/w/golangtour/doc/examples/schedulingingo/ExecutingiInstructions/example.go:4 +0x39
+exit status 2
+#+END_EXAMPLE
+
+- Listing3
+
+#+BEGIN_EXAMPLE
+$ go tool objdump -S -s "main.example" ./example1
+TEXT main.example(SB) stack_trace/example1/example1.go
+func example(slice []string, str string, i int) {
+  0x104dfa0		65488b0c2530000000	MOVQ GS:0x30, CX
+  0x104dfa9		483b6110		CMPQ 0x10(CX), SP
+  0x104dfad		762c			JBE 0x104dfdb
+  0x104dfaf		4883ec18		SUBQ $0x18, SP
+  0x104dfb3		48896c2410		MOVQ BP, 0x10(SP)
+  0x104dfb8		488d6c2410		LEAQ 0x10(SP), BP
+	panic("Want stack trace")
+  0x104dfbd		488d059ca20000	LEAQ runtime.types+41504(SB), AX
+  0x104dfc4		48890424		MOVQ AX, 0(SP)
+  0x104dfc8		488d05a1870200	LEAQ main.statictmp_0(SB), AX
+  0x104dfcf		4889442408		MOVQ AX, 0x8(SP)
+  0x104dfd4		e8c735fdff		CALL runtime.gopanic(SB)
+  0x104dfd9		0f0b			UD2              <--- LOOK HERE PC(+0x39)
+#+END_EXAMPLE
+
+#+begin_quote
+The hex number ~+0x39~ represents the PC offset for an instruction inside the
+example...
+
+Remember: the PC is the next instruction, not the current one. Listing 3 is a
+good example of the amd64 based instructions that the Thread for this Go program
+is in charge of executing sequentially. #+end_quote
+
+** Thread States
+1. *Waiting*: This means the Thread is stopped and waiting for something in order
+   to continue.These types of latencies are *a root cause* for bad performance.
+
+2. *Runnable*: This means the Thread wants time on a core so it can execute its
+   assigned machine instructions.
+
+3. *Executing*: This means the Thread has been placed on a core and is executing
+   its machine instructions. This is what everyone wants.
+
+** Type of Works
+
+1. *CPU-Bound*: This is work that never creates a situation where the Thread may
+   be placed in Waiting states. This is work that is constantly making
+   calculations.(Counts Pi)
+
+2. *IO-Bound*: This is work that causes Threads to enter into Waiting states.
+
+** Context Switching
+
+#+begin_quote
+The physical act of swapping Threads on a core is called a context switch. A
+context switch happens when the scheduler pulls an Executing thread off a core
+and replaces it with a Runnable Thread.
+
+Context switches are considered to be *expensive* because it takes times to swap
+Threads on and off a core.
+#+end_quote
+
+1. For /IO-Bound work/, then context switches are going to be an advantage;
+2. For /CPU-Bound work/, then context switches are going to be a bad performance.
+
+** Less is More
+
+#+begin_quote
+Less Threads in a Runnable state means less scheduling overhead and more time
+each Thread gets over time.
+
+More Threads in a Runnable state mean less time each Thread gets over time. That
+means less of your work is getting done over time as well.
+#+end_quote
+
+** Find The Balance
+- The magic number of 3 in IOCP Thread pool
+
+#+begin_quote
+When writing web services that talked to a database, the magic number of 3
+Threads per core seemed to always give the best throughput on NT.
+#+end_quote
+
+** Cache Lines
+
+- The /cache-coherency problem/:
+
+  #+begin_quote
+  [[https://www.youtube.com/watch?v=WDIkqP4JbkE&feature=youtu.be][code::dive conference 2014 - Scott Meyers: Cpu Caches and Why You Care - YouTube]]
+  #+end_quote
+
+** Scheduling Decision Scenario
+
+- Once the Thread is created and ready to go, should the scheduler:
+
+1. Context-switch the main Thread off of core 1?
+2. Have the Thread wait for core 1 to become available pending the completion of
+   the main Thread’s time slice?
+3. Have the Thread wait for the next available core?
+
+** Part Ⅰ Conclusion
+
+#+begin_quote
+This first part of the post provides insights into what you have to consider
+regarding Threads and the OS scheduler when writing multithreaded applications.
+These are the things the Go scheduler takes into consideration as well.
+#+end_quote
+
+* Part II - Go Scheduler
+** Your Program Starts
+
+*** Logical Processor (P)
+
+- Virtual cores: *P*
+
+#+begin_quote
+When your Go program starts up, it’s given a Logical Processor (P) for every
+/virtual core/ that is identified on the host machine.
+
+For Hyper-Threading CPU, each hardware thread will be presented to your Go
+program as a virtual core.
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+package main
+
+import "runtime"
+
+func main() {
+    // NumCPU returns the number of logical
+    // CPUs usable by the current process.
+	  // 四核八线程
+    fmt.Println(runtime.NumCPU())
+}
+#+END_SRC
+
+#+RESULTS:
+: 8
+
+*** Machine: *M*
+- Every P is assigned an OS Thread (“M”). The ‘M’ stands for machine.
+
+  #+begin_quote
+  This Thread is still managed by the OS and the OS is still responsible for
+  placing the Thread on a Core for execution
+  #+end_quote
+
+*** Coroutines => Goroutines
+- Every Go program is also given an initial Goroutine (“G”), which is the path
+  of execution for a Go program.
+
+#+begin_quote
+You can think of Goroutines as *application-level threads* and they are similar
+to OS Threads in many ways. Just as OS Threads are context-switched on and off a
+core, Goroutines are context-switched on and off an M.
+#+end_quote
+
+*** GRQ & LRQ
+
+ 1. the Local Run Queue (LRQ)
+ #+begin_quote
+ Within the context of a P: Each P was given a LRQ that manages the Goroutines
+ assigned to be executed.
+
+ These Goroutines take turns being context-switched on and off the M assigned to
+ that P.
+ #+end_quote
+
+ 2. the Global Run Queue (GRQ)
+
+ #+begin_quote
+ The GRQ is for Goroutines that have not been assigned to a P yet. There is a
+ process to move Goroutines from the GRQ to a LRQ
+ #+end_quote
+
+[[file:../img/_20200810_164748https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure2.png]]
+
+** Cooperating Scheduler
+
+- the OS scheduler is a *preemptive scheduler* (抢占式).
+- The current implementation of the Go scheduler is not a preemptive scheduler
+  but a *cooperating scheduler*.
+
+#+begin_quote
+What’s brilliant about the Go cooperating scheduler is that it looks and feels
+preemptive. You can’t predict what the Go scheduler is going to do. This is
+because decision making for this cooperating scheduler doesn’t rest in the hands
+of developers, but in the Go runtime.
+
+It’s important to *think of the Go scheduler as a preemptive scheduler* and
+since the scheduler is non-deterministic, this is not much of a stretch.
+#+end_quote
+
+** Goroutine States
+
+/Just like the Thread states in OS scheduler/
+
+1. *Waiting*: This means the Goroutine is stopped and waiting for something in
+   order to continue. 
+
+2. *Runnable*: This means the Goroutine wants time on an M so it can execute its
+   assigned instructions. 
+
+3. *Executing*: This means the Goroutine has been placed on an M and is
+   executing its instructions.
+
+** Context Switching
+
+There are four classes of events that occur in your Go programs that allow the
+scheduler to make scheduling decisions. This *doesn’t mean it will always happen*
+on one of these events. It means *the scheduler gets the opportunity*.
+
+1. The use of the keyword ~go~
+2. Garbage collection
+3. System calls
+4. Synchronization and Orchestration
+
+
+*The scheduler gets the opportunity* when:
+
+- The use of the keyword ~go~
+
+  Once a new Goroutine is created, it gives the scheduler an opportunity to make
+  a scheduling decision.
+
+- GC
+
+  One smart decision is context-switching a Goroutine that wants to touch the
+  heap with those that don’t touch the heap during GC.
+
+- System calls
+
+- Synchronization and Orchestration
+
+  If an atomic, mutex, or channel operation call will cause the Goroutine to
+  block, the scheduler can context-switch a new Goroutine to run. Once the
+  Goroutine can run again, it can be re-queued and eventually context-switched
+  back on an M.
+
+** Asynchronous System Calls :ATTACH:
+:PROPERTIES:
+:ID:       218e47fa-cbf2-40c6-9a50-de5345bc201e
+:DIR:      ../img/
+:END:
+
+#+begin_quote
+the OS you are running on has the ability to handle a system call
+asynchronously, something called the *network poller* can be used to process the
+system call more efficiently. This is accomplished by using ~kqueue~ (MacOS),
+~epoll~ (Linux) or ~iocp~ (Windows) within these respective OS’s.
+
+-> [[https://golang.org/src/runtime/netpoll.go][src/runtime/netpoll.go - The Go Programming Language]]
+#+end_quote
+
+[[../img/_20200811_174438https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure4.png]]
+
+** Synchronous System Calls :ATTACH:
+:PROPERTIES:
+:ID:       8e51e394-7ccb-4310-b24c-f28efac92a91
+:DIR:      ../img/
+:END:
+
+[[../img/_20200811_175620https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure7.png]]
+
+#+begin_quote
+the scheduler is able to identify that Goroutine-1 has caused the M to block. At
+this point, the scheduler detaches M1 from the P with the blocking Goroutine-1
+still attached. Then the scheduler brings in a new M2 to service the P. At that
+point, Goroutine-2 can be selected from the LRQ and context-switched on M2. If
+an M already exists because of a previous swap, this transition is quicker than
+having to create a new M.
+#+end_quote
+
+** Work Stealing
+*** Job Stealing Rules :ATTACH:
+:PROPERTIES:
+:ID:       3f989b4a-52d4-473f-8bcf-82e5316efa46
+:DIR:      ../img/
+:END:
+#+BEGIN_SRC go :exports both :imports "fmt"
+runtime.schedule() {
+    // only 1/61 of the time, check the global runnable queue for a G.
+    // if not found, check the local queue.
+    // if not found,
+    //     try to steal from other Ps.
+    //     if not, check the global runnable queue.
+    //     if not found, poll network.
+}
+#+END_SRC
+
+[[../img/_20200811_182909https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure10.png]]
+
+
+[[../img/_20200811_183023https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure12.png]]
+
+** Practical Example
+*** OS Thread Context Switch :ATTACH:
+:PROPERTIES:
+:ID:       d7700ef7-8d59-462a-a409-d509e131f70f
+:DIR:      ../img/
+:END:
+
+[[../img/_20200811_183435https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure16.png]]
+
+
+#+begin_quote
+Threads context-switch once again as the message by Thread 2 is received by
+Thread 1. Now Thread 2 context-switches from an executing state to a waiting
+state and Thread 1 context-switches from a waiting state to a runnable state and
+finally back to an executing state, which allows it to process and send a new
+message back.
+#+end_quote
+
+*** Goroutine Context Switch :ATTACH:
+:PROPERTIES:
+:ID:       a69f6837-3354-4a8e-b043-31281b6a98e0
+:DIR:      ../img/
+:END:
+
+[[../img/_20200811_183607https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F94_figure19.png]]
+
+#+begin_quote
+Things on the surface don’t appear to be any different. All the same context
+switches and state changes are occuring whether you use Threads or Goroutines.
+However, there is a major difference between using Threads and Goroutines that
+might not be obvious at first glance.
+
+In the case of using Goroutines, the same OS Thread and Core is being used for
+all the processing. This means that, *from the OS’s perspective, the OS Thread
+never moves into a waiting state;* not once. As a result all those instructions
+we lost to context switches when using Threads are not lost when using
+Goroutines.
+
+Essentially, Go has turned *IO/Blocking work into CPU-bound work* at the OS
+level. Since all the context switching is happening at the application level, we
+don’t lose the same ~12k instructions (on average) per context switch that we
+were losing when using Threads.
+#+end_quote
+
+* Part III - Concurrency
+** What is Concurrency
+*** Concurrency vs Parallelism
+#+begin_quote
+-> [[https://blog.golang.org/waza-talk][Concurrency is not parallelism - The Go Blog]]
+-> [[https://talks.golang.org/2012/waza.slide][Slides: Concurrency is not Parallelism]]
+-> [[https://www.youtube.com/watch?v=f6kdp27TYZs][Google I/O 2012 - Go Concurrency Patterns - YouTube]]
+#+end_quote
+
+- Concurrency means “out of order” execution. Concurrency is about dealing with
+  lots of things at once.
+- Parallelism means executing two or more instructions at the same
+  time. Parallelism is about doing lots of things at once.
+- Concurrency is about structure, parallelism is about execution.
+
+*** Concurrency & Parallelism in Goroutine :ATTACH:
+:PROPERTIES:
+:ID:       cf41bc06-04fe-416d-8d00-41be1e15ef38
+:DIR:      ../img/
+:END:
+
+[[../img/_20200811_190044https%3A%2F%2Fwww.ardanlabs.com%2Fimages%2Fgoinggo%2F96_figure1.png]]
+
+#+begin_quote
+you see a diagram of two logical processors (P) each with their independent OS
+thread (M) attached to an independent hardware thread (Core) on the machine. You
+can see two Goroutines (G1 and G2) are executing in *parallel*, executing their
+instructions on their respective OS/hardware thread at the same time. Within
+each logical processor, three Goroutines are taking turns sharing their
+respective OS thread. *All these Goroutines are running concurrently*, executing
+their instructions in no particular order and sharing time on the OS thread.
+#+end_quote
+
+** Workloads
+
+*** CPU-Bound
+#+begin_quote
+With CPU-Bound workloads you need parallelism to leverage concurrency.
+#+end_quote
+*** IO-Bound
+#+begin_quote
+With IO-Bound workloads you don’t need parallelism to use concurrency.
+#+end_quote
+
+** Add Numbers
+
+*** Sequencial Add
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func add(nums []int) int {
+	var ret int
+	for _, n := range nums {
+		ret += n
+	}
+	return ret
+}
+
+func main() {
+    nums := []int{1, 2, 3}
+	fmt.Println(add(nums))
+}
+#+END_SRC
+
+#+RESULTS:
+: 6
+*** Concurrent Add
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func addConcurrent(nums []int) int {
+	gn := runtime.NumCPU()
+	// divide nums into gn(numbers of goroutines) groups
+	// one goroutine in charge of count each part
+	groupSize := len(nums) / gn
+
+}
+#+END_SRC
+
+** Conclusion
+
+#+begin_quote
+You can clearly see that with IO-Bound workloads parallelism was not needed to
+get a big bump in performance. Which is the opposite of what you saw with the
+CPU-Bound work. When it comes to an algorithm like Bubble sort, the use of
+concurrency would add complexity without any real benefit of performance. It’s
+important to determine if your workload is suitable for concurrency and then
+identify the type of workload you have to use the right semantics.
+#+end_quote
+
+* Part Ⅳ - Dive into depth
+** 什么是协程？Goroutine 怎么实现的？
+
+*** 从进程 -> 协程的"历史进程"
+#+begin_quote
+Process   =>           Thread                 => Coroutine
+进程      =>  线程(LWP, Light weight process)  => 协程(Light weight userspace thread)
+#+end_quote
+
+从线程到协程是一个不断共享，不断减少切换成本的过程。
+
+*** 进程和线程
+
+1. 计算机的核心是 CPU，CPU 同一时刻只能执行一个任务;
+2. 进程就好比工厂的车间，它代表 CPU 所能处理的单个任务。任一时刻，CPU总是运行一个进程，其他进程处于非运行状态;
+3. 线程就好比车间里的工人。一个进程可以包括多个线程;
+4. 车间的空间是工人们共享的，比如 许多房间是每个工人都可以进出的。这象征一个进程的内存空间是共享的， 每个线程都可以 使用这些共享内存;
+5. "互斥锁"（Mutual exclusion，缩写 Mutex），防止多个线程同时读写某一块内存区域。
+6. "信号量"（Semaphore），用来保证多个线程不会互相冲突。
+
+**** 进程和线程简单的比喻
+看了一遍排在前面的答案，类似”进程是资源分配的最小单位，线程是CPU调度的最小单位
+“这样的回答感觉太抽象，都不太容易让人理解。做个简单的比喻：进程=火车，线程=车厢
+
+1. 计算机为了完成任务多进程工作（从上海到北京多个班次火车）
+2. 线程在进程下行进（单纯的车厢无法运行）
+3. 进程要比线程消耗更多的计算机资源（采用多列火车相比多个车厢更耗资源）
+4. 进程可以拓展到多机，进程最多适合多核（不同火车可以开在多个轨道上，同一火车的车厢不能在行进的不同的轨道上）
+5. 不同进程间数据很难共享（一辆火车上的乘客很难换到另外一辆火车，比如站点换乘）
+6. 一个进程可以包含多个线程（一辆火车可以有多个车厢）
+7. 同一进程下不同线程间数据很易共享（A车厢换到B车厢很容易）
+8. 进程间不会相互影响，一个线程挂掉将导致整个进程挂掉（一列火车不会影响到另外一列火车，但是如果一列火车上中间的一节车厢着火了，将影响到所有车厢）
+9. 进程使用的内存地址可以上锁，即一个线程使用某些共享内存时，其他线程必须等它结束，才能使用这一块内存。（比如火车上的洗手间）－"互斥锁"
+10. 进程使用的内存地址可以限定使用量（比如火车上的餐厅，最多只允许多少人进入，如果满了需要在门口等，等有人出来了才能进去）－“信号量”
+
+**** 操作系统的设计，可以归结为三点
+
+1. 以多进程形式，允许多个任务同时运行；
+2. 以多线程形式，允许单个任务分成不同的部分运行；
+3. 提供协调机制，一方面防止进程之间和线程之间产生冲突，另一方面允许进程之间和线程之间共享资源。
+
+#+begin_quote
+- [[https://www.zhihu.com/question/25532384/answer/411179772][线程和进程的区别是什么？ - 知乎]]
+- [[https://www.ruanyifeng.com/blog/2013/04/processes_and_threads.html][进程与线程的一个简单解释 - 阮一峰的网络日志]]
+#+end_quote
+
+*** 线程和协程
+
+#+begin_quote
+With threads, the operating system switches running threads preemptively
+according to the OS Kernel scheduler
+
+With coroutines, the programmer and programming language determine when
+to switch coroutines; in other words, tasks are cooperatively multi-tasked by
+pausing and resuming functions at set points, typically (but not necessarily)
+within a single thread.
+#+end_quote
+
+#+begin_quote
+[[https://stackoverflow.com/questions/1934715/difference-between-a-coroutine-and-a-thread][architecture - Difference between a "coroutine" and a "thread"? - Stack Overflow]]
+#+end_quote
+
+*** Goroutine 是一种 Coroutine 的实现方式
+
+#+begin_quote
+The goroutine includes the stack, the instruction pointer and other information
+important for scheduling.
+#+end_quote
+
+#+begin_quote
+正确的理解应该是我们处理事情时就像 CPU, 而不是像线程或者协程. 假如我当前在写某个
+服务, 发现依赖别人的函数还没有 ready, 那就把写服务这件事放一边. 点开企业微信, 我
+去和产品沟通一些问题了. 我和产品沟通了一会后, 检查一下, 发现别人已经把依赖的函数
+提交了, 然后我就最小化企业微信, 切到 IDE, 继续写服务 A 了.
+#+end_quote
+
+#+begin_quote
+Linux 下的线程其实是 ~task_struct~ 结构, 线程其实并不是真正运行的实体, 线程只是
+代表一个 *执行流和其状态*.真正运行驱动流程往前的其实是 CPU. CPU 在时钟的驱动下, 根
+据 PC 寄存器从程序中取指令和操作数, 从 RAM 中取数据, 进行计算, 处理, 跳转, 驱动
+执行流往前. _CPU 并不关注处理的是线程还是协程_, 只需要设置 PC 寄存器, 设置栈指针等
+(这些称为上下文), 那么 CPU 就可以欢快的运行这个线程或者这个协程了.
+
+线程的运行, 其实是 _被运行_. 其阻塞, 其实就是被切换出调度队列, 不再去调度执行这
+个执行流. 其他执行流满足其条件, 便会把被移出调度队列的执行流重新放回调度队列.
+协程同理, _协程其实也是一个数据结构, 记录了要运行什么函数, 运行到哪里了_. go 在
+用户态实现调度, 所以 go 要有代表协程这种执行流的结构体, 也要有保存和恢复上下文的
+函数, 运行队列. 理解了阻塞的真正含义, 也就知道能够比较容易理解, 为什么 go 的锁,
+channel 这些不阻塞线程.
+#+end_quote
+
+*** Goroutine Struct 结构体
+-> src [[file:/usr/local/Cellar/go/1.14.3/libexec/src/runtime/runtime2.go][@$GOROOT/src/runtime/runtime2.g]]
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type g struct {
+	// Stack parameters.
+	// stack describes the actual stack memory: [stack.lo, stack.hi).
+	// stackguard0 is the stack pointer compared in the Go stack growth prologue.
+	// It is stack.lo+StackGuard normally, but can be StackPreempt to trigger a preemption.
+	// stackguard1 is the stack pointer compared in the C stack growth prologue.
+	// It is stack.lo+StackGuard on g0 and gsignal stacks.
+	// It is ~0 on other goroutine stacks, to trigger a call to morestackc (and crash).
+	stack       stack   // offset known to runtime/cgo
+	stackguard0 uintptr // offset known to liblink
+	stackguard1 uintptr // offset known to liblink
+
+	_panic       *_panic // innermost panic - offset known to liblink
+	_defer       *_defer // innermost defer
+	m            *m      // current m; offset known to arm liblink
+	sched        gobuf
+	syscallsp    uintptr        // if status==Gsyscall, syscallsp = sched.sp to use during gc
+	syscallpc    uintptr        // if status==Gsyscall, syscallpc = sched.pc to use during gc
+	stktopsp     uintptr        // expected sp at top of stack, to check in traceback
+	param        unsafe.Pointer // passed parameter on wakeup
+	atomicstatus uint32
+	stackLock    uint32 // sigprof/scang lock; TODO: fold in to atomicstatus
+	goid         int64
+	schedlink    guintptr
+	waitsince    int64      // approx time when the g become blocked
+	waitreason   waitReason // if status==Gwaiting
+
+	preempt       bool // preemption signal, duplicates stackguard0 = stackpreempt
+	preemptStop   bool // transition to _Gpreempted on preemption; otherwise, just deschedule
+	preemptShrink bool // shrink stack at synchronous safe point
+
+	// asyncSafePoint is set if g is stopped at an asynchronous
+	// safe point. This means there are frames on the stack
+	// without precise pointer information.
+	asyncSafePoint bool
+
+	paniconfault bool // panic (instead of crash) on unexpected fault address
+	gcscandone   bool // g has scanned stack; protected by _Gscan bit in status
+	throwsplit   bool // must not split stack
+	// activeStackChans indicates that there are unlocked channels
+	// pointing into this goroutine's stack. If true, stack
+	// copying needs to acquire channel locks to protect these
+	// areas of the stack.
+	activeStackChans bool
+
+	raceignore     int8     // ignore race detection events
+	sysblocktraced bool     // StartTrace has emitted EvGoInSyscall about this goroutine
+	sysexitticks   int64    // cputicks when syscall has returned (for tracing)
+	traceseq       uint64   // trace event sequencer
+	tracelastp     puintptr // last P emitted an event for this goroutine
+	lockedm        muintptr
+	sig            uint32
+	writebuf       []byte
+	sigcode0       uintptr
+	sigcode1       uintptr
+	sigpc          uintptr
+	gopc           uintptr         // pc of go statement that created this goroutine
+	ancestors      *[]ancestorInfo // ancestor information goroutine(s) that created this goroutine (only used if debug.tracebackancestors)
+	startpc        uintptr         // pc of goroutine function
+	racectx        uintptr
+	waiting        *sudog         // sudog structures this g is waiting on (that have a valid elem ptr); in lock order
+	cgoCtxt        []uintptr      // cgo traceback context
+	labels         unsafe.Pointer // profiler labels
+	timer          *timer         // cached timer for time.Sleep
+	selectDone     uint32         // are we participating in a select and did someone win the race?
+
+	// Per-G GC state
+
+	// gcAssistBytes is this G's GC assist credit in terms of
+	// bytes allocated. If this is positive, then the G has credit
+	// to allocate gcAssistBytes bytes without assisting. If this
+	// is negative, then the G must correct this by performing
+	// scan work. We track this in bytes to make it fast to update
+	// and check for debt in the malloc hot path. The assist ratio
+	// determines how this corresponds to scan work debt.
+	gcAssistBytes int64
+}
+#+END_SRC
+
+#+begin_quote
+一个协程代表了一个执行流, 执行流有需要执行的函数(go func()), 有函数的入参(a1, a2),
+有当前执行流的状态和进度(对应 CPU 的 PC 寄存器和 SP 寄存器), 当然也需要有保
+存状态的地方, 用于执行流恢复. 真正代表协程的是 ~runtime.g~ 结构体. 每个 ~go func~
+都会编译成 ~runtime.newproc~ 函数, 最终有一个 ~runtime.g~ 对象放入调度队列.
+上面的 ~func~ 函数的指针设置在 ~runtime.g~ 的 ~startfunc~ 字段, 参数会在
+~newproc~ 函数里拷贝到 stack 中, ~sched~ 用于保存协程切换时的 pc 位置和栈位置.
+协程切换出去和恢复回来需要保存上下文, 恢复上下文, 这些由以下两个汇编函数实现. 以
+上就能实现协程这种执 行流, 并能进行切换和恢复。
+#+end_quote
+
+** 什么是 GPM 模型？:ATTACH:
+:PROPERTIES:
+:ID:       ec830a92-f2b5-4397-a1dc-d4cb8e6e92f2
+:DIR:      ../img/
+:END:
+
+[[../img/_20200812_170534v2-a06db1f245421b17c64d7bc4f338b71e_r.jpg.jpeg]]
+
+
+* TODO Conclusion
+:LOGBOOK:
+- State "TODO"       from              [2020-10-22 Thu 15:17]
+:END:
+
+
+* References
+
+- [[https://medium.com/a-journey-with-go/go-goroutine-and-preemption-d6bc2aa2f4b7][Go: Goroutine and Preemption. ℹ️ This article is based on Go 1.13. | by Vince...]]
+- [[https://www.zhihu.com/question/20862617/answer/921061289][Golang 的 goroutine 是如何实现的？ - 知乎]]
+- [[https://www.ruanyifeng.com/blog/2013/04/processes_and_threads.html][进程与线程的一个简单解释 - 阮一峰的网络日志]]
+- [[https://www.zhihu.com/question/25532384/answer/411179772][线程和进程的区别是什么？ - 知乎]]
+- [[https://morsmachine.dk/go-scheduler][The Go scheduler - Morsing's blog]]

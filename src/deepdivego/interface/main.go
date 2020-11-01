@@ -23,12 +23,12 @@ type Poster interface {
 }
 
 func download(r Retriever) string {
-	return r.Get("https://golang.org")
+	return r.Get("http://lroolle.com")
 }
 
-func post(poster Poster) {
-	poster.Post("https://golang.org", map[string]string{"contents": "golangtour"})
-}
+// func post(poster Poster) {
+// 	poster.Post("https://golang.org", map[string]string{"contents": "golangtour"})
+// }
 
 type RetrieverPoster interface {
 	Retriever
@@ -69,7 +69,7 @@ func main() {
 		UserAgent: "Mozilla/5.0",
 		TimeOut:   time.Minute,
 	}
-	fmt.Printf("Type realr: %T %v\n", r, r)
+	fmt.Printf("Type real: %T %v\n", r, r)
 	inspect(r)
 
 	if _, ok := r.(*mock.Retriever); ok {
@@ -78,21 +78,21 @@ func main() {
 		fmt.Println("Type assertion: this is real")
 	}
 
-	// download(r)
+	download(r)
 
 	fmt.Println("--- Queue interface{} ---")
 	q := queue.Queue{}
-	fmt.Println("q is Emptpy: ", q.Empty())
+	fmt.Println("q is Empty: ", q.Empty())
 	q.Push(1)
 	q.Push(2)
-	fmt.Println("q is Emptpy: ", q.Empty(), q)
+	fmt.Println("q is Empty: ", q.Empty(), q)
 	q.Push("a")
 	q.Push("bc")
-	fmt.Println("q is Emptpy: ", q.Empty(), q)
-	fmt.Println("Poped: ", q.Pop())
-	fmt.Println("Poped: ", q.Pop())
-	fmt.Println("Poped: ", q.Pop())
-	fmt.Println("q is Emptpy: ", q.Empty(), q)
+	fmt.Println("q is Empty: ", q.Empty(), q)
+	fmt.Println("Popped: ", q.Pop())
+	fmt.Println("Popped: ", q.Pop())
+	fmt.Println("Popped: ", q.Pop())
+	fmt.Println("q is Empty: ", q.Empty(), q)
 
 	fmt.Println("--- Session Use pointer to modify mock.Retriever contents ---")
 	retriever := &mock.Retriever{}

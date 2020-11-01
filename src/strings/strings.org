@@ -13,10 +13,12 @@ func main() {
 	fmt.Println(strings.Compare("a", "b"))
 	fmt.Println(strings.Compare("a", "a"))
 	fmt.Println(strings.Compare("b", "a"))
+	fmt.Println(strings.Compare("c", "a"))
 }
 #+END_SRC
 
 #+RESULTS:
 : -1
 : 0
+: 1
 : 1

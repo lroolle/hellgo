@@ -1,0 +1,17 @@
+#+TITLE: Practical Go Real World Advice For Writing Maintainable Programs
+#+DATE: 2020-08-31 15:53
+
+#+EXPORT_FILE_NAME: practical-go-real-world-advice-for-writing-maintainable-programs
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: ...
+
+* Practical Go Real World Advice For Writing Maintainable Programs
+
+#+begin_quote
+-> [[https://dave.cheney.net/practical-go/presentations/qcon-china.html][Slides  - Practical Go: Real world advice for writing maintainable Go programs]]
+-> [[https://www.youtube.com/watch?v=EXrEd1-GZR0][YouTube - Practical Go: Real World Advice For Writing Maintainable Go Programs]]
+#+end_quote

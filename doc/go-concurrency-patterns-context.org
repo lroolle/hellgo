@@ -1,0 +1,82 @@
+#+TITLE: Go Concurrency Patterns Context
+#+DATE: 2020-08-15
+
+#+EXPORT_FILE_NAME: go-concurrency-patterns-context
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang context goroutine
+
+Original Post:
+#+begin_quote
+-> [[https://blog.golang.org/context][Go Concurrency Patterns: Context - The Go Blog]]
+#+end_quote
+Context src:
+#+begin_quote
+-> [[https://golang.org/pkg/context][context - The Go Programming Language]]
+#+end_quote
+
+
+* Go Concurrency Patterns Context
+
+#+begin_quote
+~context~ package makes it easy to pass request-scoped values, cancellation
+signals, and deadlines across API boundaries to all the goroutines involved in
+handling a request
+#+end_quote
+
+
+* Context
+
+The core of the context package is the Context type:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// A Context carries a deadline, cancelation signal, and request-scoped values
+// across API boundaries. Its methods are safe for simultaneous use by multiple
+// goroutines.
+type Context interface {
+	// Done returns a channel that is closed when this Context is canceled
+	// or times out.
+	Done() <-chan struct{}
+
+	// Err indicates why this context was canceled, after the Done channel
+	// is closed.
+	Err() error
+
+	// Deadline returns the time when this Context will be canceled, if any.
+	Deadline() (deadline time.Time, ok bool)
+
+	// Value returns the value associated with key or nil if none.
+	Value(key interface{}) interface{}
+}
+#+END_SRC
+
+** Done()
+The Done method returns a channel that acts as a cancellation signal to functions
+running on behalf of the Context: when the channel is closed, the functions
+should abandon their work and return. The Err method returns an error indicating
+why the Context was canceled. The [[https://blog.golang.org/pipelines][Pipelines and Cancelation]] article discusses
+the Done channel idiom in more detail.
+
+A Context does not have a Cancel method for the same reason the Done channel is
+receive-only: the function receiving a cancelation signal is usually not the one
+that sends the signal. In particular, when a parent operation starts goroutines
+for sub-operations, those sub-operations should not be able to cancel the
+parent. Instead, the WithCancel function (described below) provides a way to
+cancel a new Context value.
+
+A Context is safe for simultaneous use by multiple goroutines. Code can pass a
+single Context to any number of goroutines and cancel that Context to signal all
+of them.
+
+** Deadline()
+The Deadline method allows functions to determine whether they should start work
+at all; if too little time is left, it may not be worthwhile. Code may also use
+a deadline to set timeouts for I/O operations.
+
+** Value
+
+Value allows a Context to carry request-scoped data. That data must be safe for
+simultaneous use by multiple goroutines.

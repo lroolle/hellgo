@@ -1,10 +1,20 @@
-#+TITLE: Readme
-#+STARTUP: nofold
+#+TITLE: Hellgo
+#+STARTUP: overview
 
-#+begin_quote
-A tour around go.
-#+end_quote
+At first, this project is so called ~golangtour~ or ~hellogo~...ughhh, boring.
 
+Then, thanks to my clumsy fingers, the misspelling ~hellgo~ for ~hellogo~, coincidentally sounds interesting.
+
+The "hell", is not that hell, not like "infernal" here, it simply means nothing but:
+
+- A /hellgo/ to go?
+- What the "hell" to go?
+- How the "hell" should I go with go?
+- How get the "hell" out of go?
+- How dive into the "hell" of go?
+- Heil Hitler!(/another misspelling/)
+- Hell nonsense!!
+- Hell go!!!
 
 * Index
 
@@ -13,14 +23,16 @@ A tour around go.
   - [[file:doc/effective-go.org][Effective Go(Go Blog)]]
   - [[file:doc/gomod.org][Go Modules: ~go mod init~]]
 
-- Dive & Surf
+- Dive & Tour
   - [[file:doc/deepdive-go.org][Ccmouse Golang Course: Deepdive Go]]
   - [[file:doc/unicode-go.org][Unicode Go]]
+  - [[file:src/json/parser.go][A Simple JSON Parser Written in Go]]
 
 
 
-#+BEGIN_SRC license
+* LICENSE
 
+#+BEGIN_VERSE
         DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
                     Version 2, December 2004
 
@@ -34,4 +46,4 @@ A tour around go.
    TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
 
   0. You just DO WHAT THE FUCK YOU WANT TO.
-#+END_SRC
+#+END_VERSE

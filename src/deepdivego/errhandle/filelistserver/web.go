@@ -1,12 +1,19 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/lroolle/deepdivego/errhandle/filelistserver/file"
-	"github.com/prometheus/common/log"
+	llog "github.com/prometheus/common/log"
 )
+
+type userError interface {
+	error
+	Message() string
+}
 
 type appHandler func(writer http.ResponseWriter, request *http.Request) error
 
@@ -14,7 +21,7 @@ func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Error("Panic: %v", r)
+				log.Printf("Panic: %v", r)
 				http.Error(
 					writer,
 					http.StatusText(http.StatusInternalServerError),
@@ -23,7 +30,7 @@ func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {
 		}()
 		err := handler(writer, request)
 		if err != nil {
-			log.Warn("Error handling request: ", err.Error())
+			llog.Warn("Error handling request: ", err.Error())
 
 			if userErr, ok := err.(userError); ok {
 				http.Error(writer, userErr.Message(), http.StatusBadRequest)
@@ -42,11 +49,6 @@ func errWrapper(handler appHandler) func(http.ResponseWriter, *http.Request) {
 			http.Error(writer, http.StatusText(code), code)
 		}
 	}
-}
-
-type userError interface {
-	error
-	Message() string
 }
 
 func main() {

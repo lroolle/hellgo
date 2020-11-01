@@ -1,6 +1,17 @@
 #+TITLE: Effective Go
+#+DATE: 2020-06-07
+#+TOC: headlines 2
 
-* Formatting
+#+EXPORT_FILE_NAME: effective-go
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
+
+* Formatting("pkg/fmt")
 
 - Indentation
  
@@ -1283,11 +1294,318 @@ type ReadWriter struct {
 }
 #+END_SRC
 
-* TODO Concurrency
+* STRT Concurrency
 
 ** Share by communicating
 
-- *Do not communicate by sharing memory; instead, share memory by Dcommunicatingd.*
+#+begin_quote
+*Do not communicate by sharing memory; instead, share memory by communicating.*
+#+end_quote
+
+** A ~goroutine~
+
+- A goroutine has a simple model: it is a function executing concurrently with
+  other goroutines in the *same address space*.
+- It is lightweight, costing little more than the allocation of stack space.
+- Grow by allocating (and freeing) heap storage as required.
+
+#+BEGIN_SRC go :exports both :imports "fmt" :output results
+import (
+	"time"
+	"runtime"
+)
+func Announce(message string, delay time.Duration) {
+	go func() {
+		time.Sleep(delay)
+		fmt.Println(message)
+	}() // Note the parentheses - must call the function.
+}
+
+func main() {
+	Announce("Hi from goroutine", time.Millisecond)
+	time.Sleep(time.Millisecond)
+	fmt.Println(runtime.NumCPU())
+}
+#+END_SRC
+
+#+RESULTS:
+: Hi from goroutine
+: 8
+
+** Channels
+#+BEGIN_SRC go :exports both :imports "fmt"
+func doSomethingForAWhile() {
+
+}
+
+func main() {
+	c := make(chan int) // Allocate a channel.
+	// Start the sort in a goroutine; when it completes, signal on the channel.
+	go func() {
+		// list.Sort()
+		fmt.Println("do print")
+		c <- 1 // Send a signal; value does not matter.
+	}()
+	doSomethingForAWhile()
+	<-c // Wait for sort to finish; discard sent value.
+}
+#+END_SRC
+
+#+RESULTS:
+: do print
+
+- Unbuffered channels combine communication—the exchange of a value—with
+  *synchronization—guaranteeing* that two calculations (goroutines) are
+  in a known state.
+- Receivers always block until there is data to receive.If the channel
+  is unbuffered, the sender blocks until the receiver has received the value.
+- If the channel has a buffer, the sender blocks only until the value
+  has been copied to the buffer; if the buffer is full, this means waiting until
+  some receiver has retrieved a value.
+
+*** A buffered channel can be used like a semaphore
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// The capacity of the channel buffer limits the number of simultaneous calls
+// to process.
+var sem = make(chan int, MaxOutstanding)
+
+func handle(r *Request) {
+	sem <- 1   // Wait for active queue to drain.
+	process(r) // May take a long time.
+	<-sem      // Done; enable next request to run.
+}
+
+func Serve(queue chan *Request) {
+	for {
+		req := <-queue
+		go handle(req) // Don't wait for handle to finish.
+	}
+}
+#+END_SRC
+
+#+begin_quote
+This design has a problem, though: ~Serve~ creates a new goroutine for every
+incoming request, even though only ~MaxOutstanding~ of them can run at any moment.
+As a result, the program can consume unlimited resources if the requests come in
+too fast. We can address that deficiency by changing Serve to gate the creation
+of the goroutines. Here's an obvious solution, but beware it has a bug we'll fix
+subsequently:
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func Serve(queue chan *Request) {
+	for req := range queue {
+		sem <- 1
+		// go func() {
+		// 	process(req) // BUG: the loop variable is reused for each iteration,
+		//      so the req variable is shared across all goroutines.
+		// 	<-sem
+		// }()
+
+		// FIX: by pass to each goroutine
+		go func(req *Request) {
+			process(req)
+			<-sem
+		}(req)
+	}
+}
+#+END_SRC
+
+#+begin_quote
+Compare this version with the previous to see the difference in how the closure
+is declared and run. Another solution is just to create a new variable with the
+same name, as in this example:
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func Serve(queue chan *Request) {
+	for req := range queue {
+		//  legal and idiomatic in Go to do this
+		req := req // Create new instance of req for the goroutine.
+		sem <- 1
+		go func() {
+			process(req)
+			<-sem
+		}()
+	}
+}
+#+END_SRC
+
+
+#+begin_quote
+Another approach is to start a fixed number of handle goroutines The number of
+goroutines limits the number of simultaneous calls to process. This Serve
+function also accepts a channel on which it will be told to exit; after
+launching the goroutines it blocks receiving from that channel.
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func handle(queue chan *Request) {
+	for r := range queue {
+		process(r)
+	}
+}
+
+func Serve(clientRequests chan *Request, quit chan bool) {
+	// Start handlers
+	for i := 0; i < MaxOutstanding; i++ {
+		go handle(clientRequests)
+	}
+	<-quit // Wait to be told to exit.
+}
+#+END_SRC
+
+
+
+*** Channels of channels
+
+- A common use of this property is to implement safe, parallel demultiplexing.
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+import "time"
+
+type Request struct {
+	args       []int
+	f          func([]int) int
+	resultChan chan int
+}
+
+const MaxOutstanding int = 10
+
+func sum(a []int) (s int) {
+	for _, v := range a {
+		s += v
+	}
+	return
+}
+
+func handle(queue chan *Request) {
+	for req := range queue {
+		req.resultChan <- req.f(req.args)
+	}
+}
+
+func Serve(clientRequests chan *Request, quit chan bool) {
+	// Start handlers
+	for i := 0; i < MaxOutstanding; i++ {
+		go handle(clientRequests)
+	}
+	<-quit // Wait to be told to exit.
+}
+
+func main() {
+	var clientRequests = make(chan *Request, MaxOutstanding)
+	var quit = make(chan bool)
+
+	request := &Request{[]int{3, 4, 5}, sum, make(chan int)}
+	// Send request
+	var nums []int
+	for i := 0; i < 9; i++ {
+		nums = append(nums, i)
+		clientRequests <- &Request{nums, sum, make(chan int)}
+	}
+	clientRequests <- request
+
+	go Serve(clientRequests, quit)
+	// Wait for response.
+	fmt.Printf("answer: %d\n", <-request.resultChan)
+	time.Sleep(time.Second)
+	quit <- true
+}
+#+END_SRC
+
+#+RESULTS:
+: answer: 12
+
+
+*** Parallelization
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+type Vector []float64
+
+// Apply the operation to v[i], v[i+1] ... up to v[n-1].
+func (v Vector) DoSome(i, n int, u Vector, c chan int) {
+	for ; i < n; i++ {
+		v[i] += u.Op(v[i])
+	}
+	c <- 1 // signal that this piece is done
+}
+
+// const numCPU = 4 // number of CPU cores
+
+// Rather than create a constant value for numCPU, we can ask the runtime what
+// value is appropriate.
+var numCPU = runtime.NumCPU()
+// Another userset core num
+// var numCPU = runtime.GOMAXPROCS(0)
+
+func (v Vector) DoAll(u Vector) {
+	c := make(chan int, numCPU) // Buffering optional but sensible.
+	for i := 0; i < numCPU; i++ {
+		go v.DoSome(i*len(v)/numCPU, (i+1)*len(v)/numCPU, u, c)
+	}
+	// Drain the channel.
+	for i := 0; i < numCPU; i++ {
+		<-c // wait for one task to complete
+	}
+	// All done.
+}
+#+END_SRC
+
+- NOTE:
+  #+begin_quote
+  Be sure not to confuse the ideas of *concurrency—structuring* a program as
+  /independently executing components/—and *parallelism—executing* /calculations in
+  parallel for efficiency on multiple CPUs/.
+  #+end_quote
+
+*** A leaky buffer
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+var freeList = make(chan *Buffer, 100)
+var serverChan = make(chan *Buffer)
+
+func client() {
+	for {
+		var b *Buffer
+		// Grab a buffer if available; allocate if not.
+		select {
+		case b = <-freeList:
+			// Got one; nothing more to do.
+		default:
+			// None free, so allocate a new one.
+			b = new(Buffer)
+		}
+		load(b)         // Read next message from the net.
+		serverChan <- b // Send to server.
+	}
+}
+
+func server() {
+	for {
+		b := <-serverChan // Wait for work.
+		process(b)
+		// Reuse buffer if there's room.
+		select {
+		case freeList <- b:
+			// Buffer on free list; nothing more to do.
+		default:
+			// Free list full, just carry on.
+		}
+	}
+}
+#+END_SRC
+
+#+begin_quote
+The client attempts to retrieve a buffer from freeList; if none is available, it
+allocates a fresh one. The server's send to freeList puts b back on the free
+list unless the list is full, in which case the buffer is dropped on the floor
+to be reclaimed by the garbage collector. (The default clauses in the select
+statements execute when no other case is ready, meaning that the selects never
+block.) This implementation builds a leaky bucket free list in just a few lines,
+relying on the buffered channel and the garbage collector for bookkeeping.
+#+end_quote
 
 * Errors
 ** By convention
@@ -1448,10 +1766,6 @@ filter unexpected problems and re-panic with the original error.
 -> src @[[file:../src/awebserver/server.go][awebserver/server.go]]
 
 
-* Go Docs
-
-
-
 * References :W:
 
 - [[https://golang.org/doc/effective_go.html#introduction][Golang Blog: Effective Go]]
@@ -1459,3 +1773,4 @@ filter unexpected problems and re-panic with the original error.
 - [[https://blog.golang.org/slices-intro][Go Slices: usage and internals]]
 - [[https://medium.com/@shazow/code-boilerplate-is-it-always-bad-934827efcfc7][Code boilerplate: Is it always bad? | by Andrey Petrov | Medium]]
 - [[https://medium.com/@elliotchance/godoc-tips-tricks-cda6571549b][godoc: Tips & Tricks. Go has a great emphasis on simple… | by Elliot Chance |...]]
+- [[https://juejin.im/post/6844903930497859591][深度解密Go语言之 scheduler - 掘金]]

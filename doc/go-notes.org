@@ -1,0 +1,240 @@
+#+TITLE: Go Notes
+#+DATE: 2020-09-01 10:40
+
+#+EXPORT_FILE_NAME: go-notes
+#+HUGO_WEIGHT: auto
+#+HUGO_BASE_DIR: ~/G/blog
+#+HUGO_AUTO_SET_LASTMOD: t
+#+HUGO_SECTION: notes
+#+HUGO_CATEGORIES: notes
+#+HUGO_TAGS: golang
+
+* Go Notes
+
+#+begin_quote
+Notes to Go
+#+end_quote
+
+* Basics
+** Local Variable Func(Recursion Func within a Func)
+#+begin_quote
+-> [[https://stackoverflow.com/questions/28099441/define-a-recursive-function-within-a-function-in-go][recursion - Define a recursive function within a function in Go - Stack Overflow]]
+#+end_quote
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// Leetcode 0841
+// Solution with recursive dfs
+func canVisitAllRooms(rooms [][]int) bool {
+	var n int
+	// the variable identifier dfs will only be in scope after the declaration
+	var dfs func([][]int, int)
+	opened := make(map[int]struct{}, len(rooms))
+
+	dfs = func(rooms [][]int, roomn int) {
+		opened[roomn] = struct{}{}
+		n++
+		for _, key := range rooms[roomn] {
+			if _, ok := opened[key]; !ok {
+				dfs(rooms, key)
+			}
+		}
+	}
+
+	dfs(rooms, 0)
+	return n == len(rooms)
+}
+#+END_SRC
+
+* Understanding Variable Scope in Go
+#+begin_quote
+-> [[https://stackoverflow.com/questions/52503560/understanding-variable-scope-in-go/52506086#52506086][Understanding variable scope in Go - Stack Overflow]]
+-> [[https://golang.org/ref/spec#Declarations_and_scope][Declarations_and_scope - The Go Programming Language Specification]]
+#+end_quote
+
+** Go is Lexically Scoped Using *Blocks*:
+
+1. ~Predeclared identifier~ is the *universe block*.
+2. ~constant~, ~type~, ~variable~, or ~function~ (/but not method/) declared at top level (outside any function) is the *package block*.
+3. ~Package name~ of an imported package is the *file block* of the file containing the import declaration.
+4. A ~method receiver~, ~function parameter~, or ~result variable~ is the *function body*.
+5. A ~constant~ or ~variable~ identifier declared /inside a function/ begins at the end of the ~ConstSpec~ or ~VarSpec~ (~ShortVarDecl~) and ends at the end of the *innermost containing block*.
+6. A ~type~ identifier declared /inside a function/ begins at the identifier in the ~TypeSpec~ and ends at the end of the *innermost containing block*.
+
+*** 1. Predeclared identifiers: Universe Block
+
+The following identifiers are implicitly declared in the universe block:
+
+#+BEGIN_SRC go
+// Types:
+	bool byte complex64 complex128 error float32 float64
+	int int8 int16 int32 int64 rune string
+	uint uint8 uint16 uint32 uint64 uintptr
+
+// Constants:
+	true false iota
+
+Zero value:
+	nil
+
+// Functions:
+	append cap close complex copy delete imag len
+	make new panic print println real recover
+#+END_SRC
+
+*** 2. Declared Outside Func: Package Block
+
+Variables, constants, types, functions declared outside of any function are
+/visible across the whole package/
+
+*** 3. Imported Package: File Block
+
+This way can be used only in file having proper import statement and *cannot* be
+accessed f.ex. from the whole package:
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+// solution.go
+import "fmt"
+
+
+// solution_test.go
+import "testing"
+#+END_SRC
+
+*** 4. Func: Function Body (Block)
+#+BEGIN_SRC go :exports both :imports "fmt"
+func (target) name(args) return type {
+   // The target/name/args/return only visible to this scope inside func body
+}
+#+END_SRC
+
+*** 5. Constant or Variables /inside a func/:
+**** outer and inner
+#+BEGIN_SRC go :exports both :imports "fmt"
+v := "outer"
+fmt.Println(v) // outer
+{
+	v := "inner"
+	fmt.Println(v) // inner
+	{
+		fmt.Println(v) // inner
+	}
+}
+{
+	fmt.Println(v) // outer
+}
+fmt.Println(v) // outer
+#+END_SRC
+
+**** Assignment and Declaration
+#+BEGIN_SRC go :exports both :imports "fmt"
+v := 1
+{
+	v = 2 // assignment
+	fmt.Printf("Inner Assignment to v=%v\n", v)
+}
+fmt.Printf("After Assignment to v=%v\n", v)
+#+END_SRC
+
+#+RESULTS:
+: Inner Assignment to v=2
+: After Assignment to v=2
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+v := 1
+{
+	v := 2 // short variable declaration
+	fmt.Printf("Declared new v=%v\n", v)
+}
+fmt.Printf("Not changed old v=%v\n", v)
+#+END_SRC
+
+#+RESULTS:
+: Declared new v=2
+: Not changed old v=1
+
+**** const and variable
+#+BEGIN_SRC go :exports both
+{
+	a, b := 1, a // undefined a
+}
+
+{
+	var (
+		a = 1
+		b = a
+	)
+}
+
+{
+	var (
+		a, b = 1, a // undefined a
+	)
+}
+
+{
+	var m = map[int]string{
+		1:  "one",
+		21: "twenty-" + m[1], // undefined m
+	}
+}
+{
+	var m = map[int]string{
+		1: "one",
+	}
+	m[21] = "twenty-" + m[1]
+}
+#+END_SRC
+
+**** recursive func inside func
+#+BEGIN_SRC go :exports both :imports "fmt"
+var f func() // f should be declared before called
+
+f = func() {
+	return f()
+} // declaration begins if declare with this short declaration
+#+END_SRC
+
+*** 6. Types /inside a func/:
+**** Recursive Types
+#+BEGIN_SRC go :exports both :imports "fmt"
+type X struct {
+	name string
+	next *X
+}
+
+type Node struct {
+    Left, Right *Node
+}
+#+END_SRC
+
+**** A slice/map contains itself
+#+BEGIN_SRC go :exports both :imports "fmt"
+type Foo []Foo
+type M map[int]M
+#+END_SRC
+
+#+BEGIN_SRC go :exports both :imports "fmt"
+func main() {
+	s := []interface{}{"one", nil}
+	s[1] = s // fmt.Println(s)  will cause max recursion exceed to stack overflow
+
+	fmt.Println(s[0])
+
+	s2 := s[1].([]interface{})
+	fmt.Println(s2[0])
+
+	s3 := s2[1].([]interface{})
+	fmt.Println(s3[0])
+}
+
+func traverse(s []interface{}) {
+	s1 := s[1].([]interface{})
+	fmt.Println(s1[0])
+	traverse(s1)
+}
+#+END_SRC
+
+#+RESULTS:
+: one
+: one
+: one
